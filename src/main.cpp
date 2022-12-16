@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "window.h"
+#include "gl_utils.h"
 
 using namespace Atlas;
 
@@ -11,7 +12,10 @@ int main() {
 	wInfo.height = 900;
 	Window w(wInfo);
 
+	gl_utils::init();
+
 	while (!w.should_close()) {
 		w.on_update();
+		gl_utils::update();
 	}
 }

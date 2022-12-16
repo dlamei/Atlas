@@ -4,7 +4,7 @@
 
 namespace Atlas {
 
-	void default_event_callback_fn(Event &e) { CORE_TRACE("{}", e.to_string()); }
+	void default_event_callback_fn(Event &e) {}
 
 	static bool s_GLFWInitialized = false;
 
@@ -49,6 +49,7 @@ namespace Atlas {
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE); //TODO: enable
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 		m_Window = glfwCreateWindow((int)m_Width, (int)m_Height, m_Title.c_str(),
