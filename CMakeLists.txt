@@ -32,5 +32,10 @@ target_precompile_headers(${PROJECT_NAME}
 	)
 
 target_link_libraries(${PROJECT_NAME}
-	PRIVATE glad glfw spdlog
+	PRIVATE 
+	glad
+	glfw
+	spdlog
+	imgui
+	glm
 	)
