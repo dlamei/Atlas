@@ -42,6 +42,7 @@ target_link_libraries(${PROJECT_NAME}
 	spdlog
 	imgui
 	glm
+	stb
 	)
 
 if (WIN32)

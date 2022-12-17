@@ -15,7 +15,7 @@ int main() {
 	gl_utils::init();
 
 	while (!w.should_close()) {
-		w.on_update();
 		gl_utils::update();
+		w.on_update();
 	}
 }

@@ -1,5 +1,9 @@
 #include "gl_utils.h"
 
+#include <glm/glm.hpp>
+#include <stb_image.h>
+
+
 const char *gl_get_error_string(GLenum error)
 {
 	switch (error)
@@ -16,6 +20,11 @@ const char *gl_get_error_string(GLenum error)
 	default:                   return "Unknown Error";
 	}
 }
+
+struct Vertex {
+	glm::vec3 pos;
+	glm::vec2 uv;
+};
 
 namespace gl_utils {
 
@@ -67,7 +76,7 @@ namespace gl_utils {
 
 		if (infoLogLength > 0) {
 			std::string msg;
-			msg.resize(infoLogLength + 1);
+			msg.resize(size_t(infoLogLength + 1));
 
 			//TODO: error handling
 			glGetShaderInfoLog(id, infoLogLength, nullptr, msg.data());
@@ -97,7 +106,7 @@ namespace gl_utils {
 			glGetProgramiv(id, GL_INFO_LOG_LENGTH, &infoLogLength);
 			if (infoLogLength > 0) {
 				std::string msg;
-				msg.resize(infoLogLength + 1);
+				msg.resize(size_t(infoLogLength + 1));
 
 				//TODO: error handling
 				glGetProgramInfoLog(id, infoLogLength, nullptr, msg.data());
@@ -108,30 +117,96 @@ namespace gl_utils {
 		}
 
 		for (uint32_t i = 0; i < moduleCount; i++) glDetachShader(id, modules[i]);
-		for (uint32_t i = 0; i < moduleCount; i++) glDeleteShader(modules[i]);
 
 		*programID = id;
 		return true;
 	}
 
-	uint32_t load_shader(const char *vertexFilePath, const char *fragmentFilePath) {
+	bool load_shader(const char *vertexFilePath, const char *fragmentFilePath, uint32_t *shader) {
+		bool res = false;
 
 		uint32_t modules[2]{};
-		load_shader_module("assets/shaders/default.vert", GL_VERTEX_SHADER, &modules[0]);
+		res = load_shader_module("assets/shaders/default.vert", GL_VERTEX_SHADER, &modules[0]);
+		if (!res) return false;
+
 		uint32_t fragShaderID{};
-		load_shader_module("assets/shaders/default.frag", GL_FRAGMENT_SHADER, &modules[1]);
+		res = load_shader_module("assets/shaders/default.frag", GL_FRAGMENT_SHADER, &modules[1]);
+		if (!res) return false;
 
 		uint32_t id{};
-		link_shader_modules(modules, 2, &id);
-		return id;
+		res = link_shader_modules(modules, 2, &id);
+		if (!res) return false;
+
+		glDeleteShader(modules[0]);
+		glDeleteShader(modules[1]);
+
+		*shader = id;
+		return true;
+	}
+
+	struct GLTexture {
+		uint32_t width, height, nChannels;
+		uint32_t id;
+	};
+
+	bool load_texture(const char *filePath, GLTexture *texture) {
+
+		int width, height, channels;
+
+		stbi_uc *data = nullptr;
+		data = stbi_load(filePath, &width, &height, &channels, 0);
+
+		if (!data || stbi_failure_reason()) {
+			CORE_WARN("Failed to load image: {}", filePath);
+			CORE_WARN("{}", stbi_failure_reason());
+			return false;
+		}
+
+		GLenum internalFormat = 0;
+		GLenum dataFormat = 0;
+
+		if (channels == 4)
+		{
+			internalFormat = GL_RGBA8;
+			dataFormat = GL_RGBA;
+		}
+		else if (channels == 3)
+		{
+			internalFormat = GL_RGB8;
+			dataFormat = GL_RGB;
+		}
+
+		uint32_t id;
+		glCreateTextures(GL_TEXTURE_2D, 1, &id);
+
+		glTextureStorage2D(id, 1, internalFormat, width, height);
+		glTextureSubImage2D(id, 0, 0, 0, width, height, dataFormat, GL_UNSIGNED_BYTE, data);
+		glGenerateTextureMipmap(id);
+
+		glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		stbi_image_free(data);
+
+		texture->id = id;
+		texture->width = width;
+		texture->height = height;
+
+		return true;
 	}
 
 	uint32_t vertexArrayID;
 	uint32_t VBO, VAO, EBO;
 	uint32_t shader;
+	GLTexture texture;
 
 	void init()
 	{
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 		glEnable(GL_DEBUG_OUTPUT);
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
 		glDebugMessageCallback(gl_debug_msg, 0);
@@ -139,53 +214,57 @@ namespace gl_utils {
 		glGenVertexArrays(1, &vertexArrayID);
 		glBindVertexArray(vertexArrayID);
 
-		float vertices[] =
+		Vertex vertices[] =
 		{
-			-0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Lower left corner
-			0.5f, -0.5f * float(sqrt(3)) / 3, 0.0f, // Lower right corner
-			0.0f, 0.5f * float(sqrt(3)) * 2 / 3, 0.0f, // Upper corner
-			-0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner left
-			0.5f / 2, 0.5f * float(sqrt(3)) / 6, 0.0f, // Inner right
-			0.0f, -0.5f * float(sqrt(3)) / 3, 0.0f // Inner down
+			{{0, 0, 0}, {0, 0}},
+			{{0, 1, 0}, {0, 1}},
+			{{1, 1, 0}, {1, 1}},
+			{{1, 0, 0}, {1, 0}},
 		};
 
 		uint32_t indices[] =
 		{
-			0, 3, 5, // Lower left triangle
-			3, 2, 4, // Lower right triangle
-			5, 4, 1 // Upper triangle
+			0, 1, 2,
+			0, 2, 3
 		};
 
-		glGenVertexArrays(1, &VAO);
-		glGenBuffers(1, &VBO);
-		glGenBuffers(1, &EBO);
+		glCreateVertexArrays(1, &VAO);
+		glCreateBuffers(1, &VBO);
+		glCreateBuffers(1, &EBO);
 
 		glBindVertexArray(VAO);
 
-		glBindBuffer(GL_ARRAY_BUFFER, VBO);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+		glNamedBufferData(VBO, sizeof(vertices), vertices, GL_STATIC_DRAW);
+		glNamedBufferData(EBO, sizeof(indices), indices, GL_STATIC_DRAW);
 
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
-		glEnableVertexAttribArray(0);
+		glVertexArrayElementBuffer(VAO, EBO);
+		glVertexArrayVertexBuffer(VAO, 0, VBO, 0, sizeof(Vertex));
 
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindVertexArray(0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		glEnableVertexArrayAttrib(VAO, 0);
+		glEnableVertexArrayAttrib(VAO, 1);
 
-		shader = load_shader("assets/shaders/default.vert", "assets/shaders/default.frag");
+		glVertexArrayAttribFormat(VAO, 0, 3, GL_FLOAT, GL_FALSE, offsetof(Vertex, Vertex::pos));
+		glVertexArrayAttribFormat(VAO, 1, 2, GL_FLOAT, GL_FALSE, offsetof(Vertex, Vertex::uv));
+
+		glVertexArrayAttribBinding(VAO, 0, 0);
+		glVertexArrayAttribBinding(VAO, 1, 0);
+
+		load_shader("assets/shaders/default.vert", "assets/shaders/default.frag", &shader);
+		load_texture("assets/images/uv_checker.png", &texture);
+
+		glProgramUniform1i(shader, glGetUniformLocation(shader, "tex"), 0);
 	}
 
 	void update() {
-
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
+
+		glBindTexture(GL_TEXTURE_2D, texture.id);
+
 		glUseProgram(shader);
-
 		glBindVertexArray(VAO);
-		glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
-	}
 
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+	}
 }
