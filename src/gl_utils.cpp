@@ -3,6 +3,12 @@
 #include <glm/glm.hpp>
 #include <stb_image.h>
 
+#include <imgui.h>
+#include <imgui_impl_opengl3.h>
+#include <imgui_impl_glfw.h>
+
+#include <GLFW/glfw3.h>
+
 
 const char *gl_get_error_string(GLenum error)
 {
@@ -144,14 +150,33 @@ namespace gl_utils {
 		return true;
 	}
 
-	struct GLTexture {
-		uint32_t width, height, nChannels;
+	void create_texture2D(uint32_t width, uint32_t height, GLenum format, bool mipmap, uint32_t *texture) {
 		uint32_t id;
-	};
+		glCreateTextures(GL_TEXTURE_2D, 1, &id);
+		glTextureStorage2D(id, 1, format, width, height);
 
-	bool load_texture(const char *filePath, GLTexture *texture) {
+		glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+		glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		if (mipmap) glGenerateTextureMipmap(id);
 
+		*texture = id;
+	}
+
+	void set_texture2D_data(uint32_t texture, uint32_t width, uint32_t height, GLenum dataFormat, void *data) {
+		if (!texture) {
+			CORE_WARN("Texture2D: can not set data, Texture is not initialized!");
+			return;
+		}
+
+		glTextureSubImage2D(texture, 0, 0, 0, width, height, dataFormat, GL_UNSIGNED_BYTE, data);
+	}
+
+	bool load_texture2D(const char *filePath, uint32_t *texture) {
 		int width, height, channels;
+
+		stbi_set_flip_vertically_on_load(true);
 
 		stbi_uc *data = nullptr;
 		data = stbi_load(filePath, &width, &height, &channels, 0);
@@ -176,33 +201,48 @@ namespace gl_utils {
 			dataFormat = GL_RGB;
 		}
 
-		uint32_t id;
-		glCreateTextures(GL_TEXTURE_2D, 1, &id);
-
-		glTextureStorage2D(id, 1, internalFormat, width, height);
-		glTextureSubImage2D(id, 0, 0, 0, width, height, dataFormat, GL_UNSIGNED_BYTE, data);
-		glGenerateTextureMipmap(id);
-
-		glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		uint32_t tex{};
+		create_texture2D(width, height, internalFormat, true, &tex);
+		set_texture2D_data(tex, width, height, dataFormat, data);
 
 		stbi_image_free(data);
 
-		texture->id = id;
-		texture->width = width;
-		texture->height = height;
+		*texture = tex;
 
 		return true;
 	}
 
-	uint32_t vertexArrayID;
-	uint32_t VBO, VAO, EBO;
-	uint32_t shader;
-	GLTexture texture;
+	void init_imgui(GLFWwindow *window) {
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGuiIO &io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-	void init()
+		ImGui::StyleColorsDark();
+
+		ImGuiStyle &style = ImGui::GetStyle();
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			style.WindowRounding = 0.0f;
+			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+		}
+
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
+		ImGui_ImplOpenGL3_Init("#version 410");
+
+	}
+
+	uint32_t vertexArrayID;
+	uint32_t VBO, VAO, EBO, FBO;
+	uint32_t shader;
+	uint32_t texture;
+	std::shared_ptr<GLTexture2D> testTexture;
+
+	uint32_t textureColorbuffer;
+
+	void init_opengl()
 	{
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -210,6 +250,9 @@ namespace gl_utils {
 		glEnable(GL_DEBUG_OUTPUT);
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
 		glDebugMessageCallback(gl_debug_msg, 0);
+	}
+
+	void init() {
 
 		glGenVertexArrays(1, &vertexArrayID);
 		glBindVertexArray(vertexArrayID);
@@ -237,7 +280,6 @@ namespace gl_utils {
 		glNamedBufferData(VBO, sizeof(vertices), vertices, GL_STATIC_DRAW);
 		glNamedBufferData(EBO, sizeof(indices), indices, GL_STATIC_DRAW);
 
-
 		glVertexArrayElementBuffer(VAO, EBO);
 		glVertexArrayVertexBuffer(VAO, 0, VBO, 0, sizeof(Vertex));
 
@@ -251,20 +293,123 @@ namespace gl_utils {
 		glVertexArrayAttribBinding(VAO, 1, 0);
 
 		load_shader("assets/shaders/default.vert", "assets/shaders/default.frag", &shader);
-		load_texture("assets/images/uv_checker.png", &texture);
+		load_texture2D("assets/images/uv_checker.png", &texture);
 
 		glProgramUniform1i(shader, glGetUniformLocation(shader, "tex"), 0);
+
+
+		unsigned int framebuffer;
+		glGenFramebuffers(1, &framebuffer);
+		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+		// generate texture
+		create_texture2D(800, 600, GL_RGB8, false, &textureColorbuffer);
+
+		// attach it to currently bound framebuffer object
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+
+		unsigned int rbo;
+		glGenRenderbuffers(1, &rbo);
+		glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 800, 600);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+			std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
+	void imgui_begin() {
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		//ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+	}
+
+	void imgui_end() {
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		ImGuiIO &io = ImGui::GetIO();
+
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			GLFWwindow *backup_current_context = glfwGetCurrentContext();
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+			glfwMakeContextCurrent(backup_current_context);
+		}
 	}
 
 	void update() {
+		imgui_begin();
+
+		ImGui::ShowDemoWindow();
+
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		glBindTexture(GL_TEXTURE_2D, texture.id);
+		glBindTexture(GL_TEXTURE_2D, texture);
 
 		glUseProgram(shader);
 		glBindVertexArray(VAO);
 
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		imgui_end();
+	}
+
+	GLTexture2D::GLTexture2D(const GLTexture2DCreateInfo &info)
+		: m_Width(info.width), m_Height(info.height), m_Format(info.format), m_Mipmap(info.mipmap)
+	{
+		create_texture2D(info.width, info.height, info.format, info.mipmap, &m_ID);
+	}
+
+	GLTexture2D::~GLTexture2D()
+	{
+		glDeleteTextures(1, &m_ID);
+	}
+
+	void GLTexture2D::set_data(void *data, GLenum format)
+	{
+		set_texture2D_data(m_ID, m_Width, m_Height, format, data);
+	}
+
+	void GLTexture2D::bind()
+	{
+		glBindTexture(GL_TEXTURE_2D, m_ID);
+	}
+
+	GLBuffer::GLBuffer(size_t size)
+		: m_Size(size)
+	{
+		glCreateBuffers(1, &m_ID);
+		glNamedBufferData(m_ID, size, nullptr, GL_DYNAMIC_DRAW);
+	}
+
+	GLBuffer::GLBuffer(void *data, size_t size)
+		: m_Size(size)
+	{
+		glCreateBuffers(1, &m_ID);
+		glNamedBufferData(m_ID, size, data, GL_STATIC_DRAW);
+	}
+
+	void GLBuffer::set_data(void *data)
+	{
+		glNamedBufferSubData(m_ID, 0, m_Size, data);
+	}
+
+	void GLBuffer::set_sub_data(void *data, size_t size, size_t offset)
+	{
+		glNamedBufferSubData(m_ID, offset, size, data);
+	}
+
+	GLBuffer::~GLBuffer()
+	{
+		glDeleteBuffers(1, &m_ID);
 	}
 }
