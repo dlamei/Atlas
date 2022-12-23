@@ -73,7 +73,7 @@ namespace Atlas {
 
 		glfwSetWindowSizeCallback(
 			m_Window, [](GLFWwindow *window, int width, int height) {
-				ATL_EVENT("glfwWindowSizeCallback");
+			ATL_EVENT("glfwWindowSizeCallback");
 		Window &data = *(Window *)glfwGetWindowUserPointer(window);
 		data.m_Width = width;
 		data.m_Height = height;
@@ -81,18 +81,20 @@ namespace Atlas {
 		WindowResizedEvent event{ (uint32_t)width, (uint32_t)height };
 		Event e(event);
 		data.m_EventCallBackFn(e);
-			});
+
+		glfwSwapBuffers(data.get_native_window());
+		});
 
 		glfwSetWindowCloseCallback(m_Window, [](GLFWwindow *window) {
 			Window &data = *(Window *)glfwGetWindowUserPointer(window);
 		WindowClosedEvent event;
 		Event e(event);
 		data.m_EventCallBackFn(e);
-			});
+		});
 
 		glfwSetKeyCallback(m_Window, [](GLFWwindow *window, int key, int scancode,
 			int action, int mods) {
-				ATL_EVENT("glfwKeyCallback");
+			ATL_EVENT("glfwKeyCallback");
 		Window &data = *(Window *)glfwGetWindowUserPointer(window);
 
 		switch (action) {
@@ -115,7 +117,7 @@ namespace Atlas {
 			break;
 		}
 		}
-			});
+		});
 
 		glfwSetCharCallback(m_Window, [](GLFWwindow *window, unsigned int keyCode) {
 			ATL_EVENT("glfwCharCallback");
@@ -123,11 +125,11 @@ namespace Atlas {
 		KeyTypedEvent event{ (char)keyCode };
 		Event e(event);
 		data.m_EventCallBackFn(e);
-			});
+		});
 
 		glfwSetMouseButtonCallback(
 			m_Window, [](GLFWwindow *window, int button, int action, int mods) {
-				ATL_EVENT("glfwMouseButtonCallback");
+			ATL_EVENT("glfwMouseButtonCallback");
 		Window &data = *(Window *)glfwGetWindowUserPointer(window);
 
 		switch (action) {
@@ -144,27 +146,27 @@ namespace Atlas {
 			break;
 		}
 		}
-			});
+		});
 
 		glfwSetScrollCallback(
 			m_Window, [](GLFWwindow *window, double xOffset, double yOffset) {
-				ATL_EVENT("glfwScrollCallback");
+			ATL_EVENT("glfwScrollCallback");
 		Window &data = *(Window *)glfwGetWindowUserPointer(window);
 
 		MouseScrolledEvent event{ (float)xOffset, (float)yOffset };
 		Event e(event);
 		data.m_EventCallBackFn(e);
-			});
+		});
 
 		glfwSetCursorPosCallback(
 			m_Window, [](GLFWwindow *window, double xPos, double yPos) {
-				ATL_EVENT("glfwCursorCallback");
+			ATL_EVENT("glfwCursorCallback");
 		Window &data = *(Window *)glfwGetWindowUserPointer(window);
 
 		MouseMovedEvent event{ (float)xPos, (float)yPos };
 		Event e(event);
 		data.m_EventCallBackFn(e);
-			});
+		});
 	}
 
 	void Window::destroy() { glfwDestroyWindow(m_Window); }

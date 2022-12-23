@@ -16,23 +16,33 @@ set(SOURCES
 	src/logger.cpp
 	src/window.cpp
 	src/gl_utils.cpp
+	src/imgui_build.cpp
 	)
 
 set(HEADERS
 	include/event.h
 	include/window.h
 	include/gl_utils.h
+	include/imgui_build.h
+	include/utils.h
+	include/pch.h
 	)
 
+set(EMBEDED
+	embed/font.embed
+)
+
 include_directories(include)
+include_directories(embed)
 
 add_executable(${PROJECT_NAME} src/main.cpp
 	${SOURCES}
 	${HEADERS}
+	${EMBEDED}
 )
 
 target_precompile_headers(${PROJECT_NAME}
-	PRIVATE src/pch.h
+	PRIVATE include/pch.h
 	)
 
 target_link_libraries(${PROJECT_NAME}

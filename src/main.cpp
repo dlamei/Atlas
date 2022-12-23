@@ -12,6 +12,7 @@ int main() {
 	wInfo.height = 900;
 	Window w(wInfo);
 
+	gl_utils::init_opengl();
 	gl_utils::init_imgui(w.get_native_window());
 	gl_utils::init();
 
