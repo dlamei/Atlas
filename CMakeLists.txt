@@ -17,6 +17,8 @@ set(SOURCES
 	src/window.cpp
 	src/gl_utils.cpp
 	src/imgui_build.cpp
+	src/application.cpp
+	#src/camera.cpp
 	)
 
 set(HEADERS
@@ -26,6 +28,9 @@ set(HEADERS
 	include/imgui_build.h
 	include/utils.h
 	include/pch.h
+	include/camera.h
+	include/layer.h
+	include/application.h
 	)
 
 set(EMBEDED

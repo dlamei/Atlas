@@ -505,18 +505,22 @@ namespace gl_utils {
 	void gl_debug_msg(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
 		const GLchar *message, const void *userParam)
 	{
-		if (source == GL_DEBUG_SOURCE_SHADER_COMPILER) return;
+		std::string sType = "";
+
+		if (type == GL_DEBUG_TYPE_ERROR) sType = "ERROR";
+		else if (type == GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR) sType = "DEPRECATED";
+		else return;
 
 		if (severity == GL_DEBUG_SEVERITY_LOW) {
-			CORE_INFO("OpenGL Info: {}", gl_get_error_string(type));
-			CORE_INFO("{}", message);
+			CORE_TRACE("OpenGL {}: {}", sType, gl_get_error_string(type));
+			CORE_TRACE("{}", message);
 		}
 		else if (severity == GL_DEBUG_SEVERITY_MEDIUM) {
-			CORE_WARN("OpenGL Error: {}", gl_get_error_string(type));
+			CORE_WARN("OpenGL {}: {}", sType, gl_get_error_string(type));
 			CORE_WARN("{}", message);
 		}
 		else if (severity == GL_DEBUG_SEVERITY_HIGH) {
-			CORE_ERROR("OpenGL Error: {}", gl_get_error_string(type));
+			CORE_ERROR("OpenGL {}: {}", sType, gl_get_error_string(type));
 			CORE_ERROR("{}", message);
 		}
 	}
@@ -583,6 +587,12 @@ namespace gl_utils {
 		glEnable(GL_DEBUG_OUTPUT);
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
 		glDebugMessageCallback(gl_debug_msg, 0);
+
+		CORE_TRACE("OpenGL Info:");
+		CORE_TRACE(" vendor:	{}", (const char *)glGetString(GL_VENDOR));
+		CORE_TRACE(" renderer:	{}", (const char *)glGetString(GL_RENDERER));
+		CORE_TRACE(" version:	{}", (const char *)glGetString(GL_VERSION));
+		CORE_TRACE("");
 	}
 
 	void imgui_begin() {
@@ -672,7 +682,7 @@ namespace gl_utils {
 		}
 		{
 			GLRenderbufferCreateInfo info{};
-			info.width = 800;
+			info.width = 900;
 			info.height = 900;
 			info.format = GL_DEPTH24_STENCIL8;
 			depthBuffer = make_ref<GLRenderbuffer>(info);
@@ -682,9 +692,8 @@ namespace gl_utils {
 		FBO->push_tex_attachment(GL_COLOR_ATTACHMENT0, colorBuffer->id());
 		FBO->push_rbo_attachment(GL_DEPTH_STENCIL_ATTACHMENT, depthBuffer->id());
 
-
 		if (!FBO->check_status())
-			CORE_WARN("ERROR::FRAMEBUFFER:: Framebuffer is not complete!");
+			CORE_WARN("ERROR::FRAMEBUFFER: Framebuffer is not complete!");
 
 	}
 
