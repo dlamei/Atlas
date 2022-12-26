@@ -13,11 +13,6 @@
 
 #include <GLFW/glfw3.h>
 
-const uint8_t c_RobotRegular[] = {
-#include "font.embed"
-};
-
-
 const char *gl_get_error_string(GLenum error)
 {
 	switch (error)
@@ -180,6 +175,60 @@ namespace gl_utils {
 		return true;
 	}
 
+	void reflect_shader(uint32_t program, GLShaderReflectionData *data)
+	{
+		*data = GLShaderReflectionData{};
+		std::string buffer;
+		int nameLength;
+		glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &nameLength);
+		buffer.resize(nameLength);
+		int count;
+
+		//uniform
+		glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &count);
+		for (int i = 0; i < count; i++) {
+			GLenum type;
+			int nameLen, size, location;
+			glGetActiveUniform(program, (uint32_t)i, buffer.size(), &nameLen, &size, &type, buffer.data());
+			if (type == GL_UNIFORM_BLOCK) continue;
+			std::string name(buffer.data(), nameLen);
+			location = glGetUniformLocation(program, name.c_str());
+			if (location == -1) continue;
+
+			GLUniformInfo info{};
+			info.location = location;
+			info.type = type;
+			info.size;
+
+			data->uniforms.insert({ name, info });
+			//CORE_TRACE("Uniform #{} name: {} type: 0x{:x} size: {} location: {}", i, name, type, size, location);
+		}
+
+		//uniform blocks
+		glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, &nameLength);
+		buffer.resize(nameLength);
+
+		glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCKS, &count);
+		for (int i = 0; i < count; i++) {
+			int binding, dataSize, nameLen;
+			glGetActiveUniformBlockName(program, (uint32_t)i, buffer.size(), &nameLen, buffer.data());
+			glGetActiveUniformBlockiv(program, (uint32_t)i, GL_UNIFORM_BLOCK_BINDING, &binding);
+			glGetActiveUniformBlockiv(program, (uint32_t)i, GL_UNIFORM_BLOCK_DATA_SIZE, &dataSize);
+			std::string name(buffer.data(), nameLen);
+
+			int indx = glGetUniformBlockIndex(program, name.c_str());
+
+			GLUniformBlockInfo info{};
+			info.binding = binding;
+			info.size = dataSize;
+			info.index = indx;
+
+			data->unifromBlocks.insert({ name, info });
+			//CORE_TRACE("Uniform Block #{} name: {} binding: {} dataSize: {}", i, name, binding, dataSize);
+		}
+
+	}
+
 
 	GLTexture2D::GLTexture2D(const GLTexture2DCreateInfo &info)
 		: m_Width(info.width), m_Height(info.height), m_Format(info.format), m_Mipmap(info.mipmap)
@@ -200,8 +249,9 @@ namespace gl_utils {
 		set_texture2D_data(m_ID, m_Width, m_Height, format, data);
 	}
 
-	void GLTexture2D::bind()
+	void GLTexture2D::bind(int indx)
 	{
+		glActiveTexture(GL_TEXTURE0 + indx);
 		glBindTexture(GL_TEXTURE_2D, m_ID);
 	}
 
@@ -216,7 +266,7 @@ namespace gl_utils {
 		if (!data || stbi_failure_reason()) {
 			CORE_WARN("Failed to load image: {}", filePath);
 			CORE_WARN("{}", stbi_failure_reason());
-			return false;
+			return nullptr;
 		}
 
 		GLenum internalFormat = 0;
@@ -348,6 +398,13 @@ namespace gl_utils {
 		}
 
 		for (auto i : modules) glDeleteShader(i);
+
+		reflect_shader(m_ID, &m_ReflectionData);
+
+		for (auto &block : m_ReflectionData.unifromBlocks) {
+			if (block.second.binding == 0) block.second.binding = block.second.index;
+			glUniformBlockBinding(m_ID, block.second.index, block.second.binding);
+		}
 	}
 
 	GLShader::~GLShader()
@@ -462,21 +519,33 @@ namespace gl_utils {
 		glProgramUniformMatrix4fv(m_ID, location, 1, false, glm::value_ptr(value));
 	}
 
-	int GLShader::get_uniform_location(const std::string &name)
+	GLUniformInfo *GLShader::get_uniform_info(const std::string &name)
 	{
-		if (m_UniformCache.find(name) != m_UniformCache.end()) {
-			return m_UniformCache[name];
+		if (m_ReflectionData.uniforms.find(name) == m_ReflectionData.uniforms.end()) {
+			return nullptr;
 		}
 
-		int location = glGetUniformLocation(m_ID, name.c_str());
+		return &m_ReflectionData.uniforms.find(name)->second;
+	}
 
-		if (location == -1) {
+	int GLShader::get_uniform_location(const std::string &name)
+	{
+		if (m_ReflectionData.uniforms.find(name) == m_ReflectionData.uniforms.end()) {
 			CORE_WARN("GLShader::get_uniform_location: could not find uniform: {}", name);
 			return -1;
 		}
 
-		m_UniformCache[name] = location;
-		return location;
+		return m_ReflectionData.uniforms.find(name)->second.location;
+	}
+
+	int GLShader::get_block_binding(const std::string &name)
+	{
+		if (m_ReflectionData.unifromBlocks.find(name) == m_ReflectionData.unifromBlocks.end()) {
+			CORE_WARN("GLShader::get_block_binding: could not find uniform: {}", name);
+			return -1;
+		}
+
+		return m_ReflectionData.unifromBlocks.find(name)->second.binding;
 	}
 
 	VertexLayout::VertexLayout()
@@ -547,38 +616,6 @@ namespace gl_utils {
 		return true;
 	}
 
-	void init_imgui(GLFWwindow *window) {
-		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
-		ImGuiIO &io = ImGui::GetIO();
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-
-		ImGui::StyleColorsDark();
-
-		ImGuiStyle &style = ImGui::GetStyle();
-		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			style.WindowRounding = 0.0f;
-			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-		}
-
-		ImGui_ImplGlfw_InitForOpenGL(window, true);
-		ImGui_ImplOpenGL3_Init();
-
-		{
-			ImFontConfig fontConfig;
-			fontConfig.FontDataOwnedByAtlas = false;
-			ImFont *robotFont = io.Fonts->AddFontFromMemoryTTF(
-				(void *)c_RobotRegular, sizeof(c_RobotRegular), 25.0f, &fontConfig);
-			io.FontDefault = robotFont;
-			ImGui_ImplOpenGL3_CreateFontsTexture();
-		}
-
-		ImGui::SetOneDarkTheme();
-	}
-
 	void init_opengl()
 	{
 		glEnable(GL_BLEND);
@@ -595,31 +632,9 @@ namespace gl_utils {
 		CORE_TRACE("");
 	}
 
-	void imgui_begin() {
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-		ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
-	}
-
-	void imgui_end() {
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-		ImGuiIO &io = ImGui::GetIO();
-
-		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			GLFWwindow *backup_current_context = glfwGetCurrentContext();
-			ImGui::UpdatePlatformWindows();
-			ImGui::RenderPlatformWindowsDefault();
-			glfwMakeContextCurrent(backup_current_context);
-		}
-	}
-
 	Ref<GLFramebuffer> FBO;
 	Ref<VertexLayout> VAO;
-	Ref<GLBuffer> VBO, IBO;
+	Ref<GLBuffer> VBO, IBO, cameraBuffer;
 	Ref<GLShader> shader;
 	Ref<GLTexture2D> texture, colorBuffer;
 	Ref<GLRenderbuffer> depthBuffer;
@@ -667,10 +682,22 @@ namespace gl_utils {
 			};
 			shader = make_ref<GLShader>(info);
 			shader->set_int("tex", 0);
+
+			glm::mat4 camera = glm::ortho(-1, 1, -1, 1);
+
+
+			{
+				GLBufferCreateInfo info{};
+				info.size = sizeof(glm::mat4);
+				info.data = { &camera, sizeof(glm::mat4) };
+				info.usage = GL_STATIC_DRAW;
+				cameraBuffer = make_ref<GLBuffer>(info);
+			}
+
+			glBindBufferRange(GL_UNIFORM_BUFFER, shader->get_block_binding("CameraBuffer"), cameraBuffer->id(), 0, sizeof(glm::mat4));
 		}
 
 		texture = load_texture2D("assets/images/uv_checker.png");
-
 
 		{
 			GLTexture2DCreateInfo info{};
@@ -698,7 +725,6 @@ namespace gl_utils {
 	}
 
 	void update() {
-		imgui_begin();
 
 		FBO->bind();
 		glViewport(0, 0, colorBuffer->width(), colorBuffer->height());
@@ -726,12 +752,11 @@ namespace gl_utils {
 		ImGui::BeginChild("Viewport");
 
 		ImVec2 wSize = ImGui::GetWindowSize();
-		ImGui::Image((void *)colorBuffer->id(), wSize);
+		ImGui::Image((void *)colorBuffer->id(), wSize, { 0, 1 }, { 1, 0 });
 
 		ImGui::EndChild();
 		ImGui::End();
 
-		imgui_end();
 	}
 
 }

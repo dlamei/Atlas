@@ -3,6 +3,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "application.h"
+#include "window.h"
+
 namespace Atlas {
 
 	OrthographicCamera::OrthographicCamera(float left, float right, float bottom, float top)
@@ -45,7 +48,7 @@ namespace Atlas {
 		m_AspectRatio = (float)size.x / (float)size.y;
 	}
 
-	void OrthographicCameraController::on_update(Timestep timestep)
+	void OrthographicCameraController::on_update(float timestep)
 	{
 		//if (Input::IsKeyPressed(ATL_KEY_D))
 		if (Application::is_key_pressed(KeyCode::D))
@@ -199,7 +202,7 @@ namespace Atlas {
 	PerspectiveCameraController::PerspectiveCameraController(float aspecRatio)
 		: m_Camera(0.1f, 1000.0f, glm::radians(90.0f), aspecRatio) {}
 
-	void PerspectiveCameraController::on_update(Timestep ts)
+	void PerspectiveCameraController::on_update(float ts)
 	{
 		bool updated = false;
 

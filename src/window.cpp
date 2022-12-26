@@ -32,6 +32,11 @@ namespace Atlas {
 		return state == GLFW_PRESS;
 	}
 
+	bool Window::is_minimized()
+	{
+		return !(m_Width && m_Height);
+	}
+
 	//std::pair<float, float> Window::get_mouse_pos() {
 	//	double mouseX, mouseY;
 	//	glfwGetCursorPos(m_Window, &mouseX, &mouseY);

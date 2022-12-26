@@ -9,12 +9,30 @@ struct GLFWwindow;
 
 namespace gl_utils {
 
+	struct GLUniformInfo {
+		GLenum type;
+		int location;
+		int size;
+	};
+
+	struct GLUniformBlockInfo {
+		int binding;
+		int index;
+		int size;
+	};
+
+	struct GLShaderReflectionData {
+		std::unordered_map<std::string, GLUniformInfo> uniforms;
+		std::unordered_map<std::string, GLUniformBlockInfo> unifromBlocks;
+	};
+
 	void create_texture2D(uint32_t width, uint32_t height, GLenum format, bool mipmap, uint32_t *texture);
 	void set_texture2D_data(uint32_t texture, uint32_t width, uint32_t height, GLenum dataFormat, void *data);
 	bool load_texture2D(const char *filePath, uint32_t *texture);
 
 	bool load_shader_module(const char *filePath, GLenum shaderType, uint32_t *shaderID);
 	bool link_shader_modules(uint32_t *modules, uint32_t moduleCount, uint32_t *programID);
+	void reflect_shader(uint32_t program, GLShaderReflectionData *data);
 
 	void init_opengl();
 
@@ -34,7 +52,7 @@ namespace gl_utils {
 		~GLTexture2D();
 
 		void set_data(void *data, GLenum size);
-		void bind();
+		void bind(int indx = 0);
 
 		inline uint32_t id() { return m_ID; }
 		inline uint32_t width() { return m_Width; }
@@ -104,13 +122,16 @@ namespace gl_utils {
 		void set_mat3(const std::string &name, const glm::mat3 &value);
 		void set_mat4(const std::string &name, const glm::mat4 &value);
 
+		GLUniformInfo *get_uniform_info(const std::string &name);
 		int get_uniform_location(const std::string &name);
+		int get_block_binding(const std::string &name);
 
 		inline uint32_t id() { return m_ID; }
 
 	private:
 		uint32_t m_ID{ 0 };
-		std::unordered_map<std::string, int> m_UniformCache;
+		GLShaderReflectionData m_ReflectionData;
+		//std::unordered_map<std::string, int> m_UniformCache;
 	};
 
 	struct GLRenderbufferCreateInfo {
@@ -174,6 +195,4 @@ namespace gl_utils {
 
 	void init();
 	void update();
-
-	void init_imgui(GLFWwindow *window);
 }

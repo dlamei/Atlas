@@ -1,5 +1,7 @@
 #pragma once
 
+#include "application.h"
+
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -28,4 +30,22 @@ namespace ImGui {
 	const ImVec4 LIGHT_BLUE_COL = BLUE_COL + LIGHTEN;
 
 	void SetOneDarkTheme();
+}
+
+
+namespace Atlas {
+
+	class ImGuiLayer : public Layer {
+	public:
+
+		virtual void on_attach() override;
+		virtual void on_detach() override;
+		virtual void on_update(Timestep ts) override;
+		virtual void on_imgui() override;
+
+		void begin();
+		void end();
+
+	};
+
 }

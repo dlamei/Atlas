@@ -18,7 +18,8 @@ set(SOURCES
 	src/gl_utils.cpp
 	src/imgui_build.cpp
 	src/application.cpp
-	#src/camera.cpp
+	src/camera.cpp
+	src/atl_types.cpp
 	)
 
 set(HEADERS
@@ -29,8 +30,8 @@ set(HEADERS
 	include/utils.h
 	include/pch.h
 	include/camera.h
-	include/layer.h
 	include/application.h
+	include/atl_types.h
 	)
 
 set(EMBEDED

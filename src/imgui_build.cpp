@@ -1,5 +1,15 @@
 #include "imgui_build.h"
 
+#include "window.h"
+
+#include <imgui_impl_opengl3.h>
+#include <imgui_impl_glfw.h>
+#include <GLFW/glfw3.h>
+
+const uint8_t c_RobotRegular[] = {
+#include "font.embed"
+};
+
 void ImGui::SetOneDarkTheme() {
 	auto ACCENT = RED_COL;
 	auto ACCENT_HOVER = ORANGE_COL;
@@ -70,5 +80,81 @@ void ImGui::SetOneDarkTheme() {
 	colors[ImGuiCol_TitleBg] = GREY_COL;
 	colors[ImGuiCol_TitleBgActive] = LIGHT_GREY_COL;
 	colors[ImGuiCol_TitleBgCollapsed] = DARK_GREY_COL;
+
+}
+
+namespace Atlas {
+
+	void ImGuiLayer::on_attach()
+	{
+
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGuiIO &io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+		ImGui::StyleColorsDark();
+
+		ImGuiStyle &style = ImGui::GetStyle();
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			style.WindowRounding = 0.0f;
+			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+		}
+
+		ImGui_ImplGlfw_InitForOpenGL(Application::get_window().get_native_window(), true);
+		ImGui_ImplOpenGL3_Init();
+
+		{
+			ImFontConfig fontConfig;
+			fontConfig.FontDataOwnedByAtlas = false;
+			ImFont *robotFont = io.Fonts->AddFontFromMemoryTTF(
+				(void *)c_RobotRegular, sizeof(c_RobotRegular), 25.0f, &fontConfig);
+			io.FontDefault = robotFont;
+			ImGui_ImplOpenGL3_CreateFontsTexture();
+		}
+
+		ImGui::SetOneDarkTheme();
+	}
+
+	void ImGuiLayer::on_detach()
+	{
+		ImGui::DestroyContext();
+	}
+
+	void ImGuiLayer::on_update(Timestep ts)
+	{
+	}
+
+	void ImGuiLayer::on_imgui()
+	{
+	}
+
+	void ImGuiLayer::begin()
+	{
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+	}
+
+	void ImGuiLayer::end()
+	{
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		ImGuiIO &io = ImGui::GetIO();
+
+
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+			GLFWwindow *backup_current_context = glfwGetCurrentContext();
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+			glfwMakeContextCurrent(backup_current_context);
+		}
+	}
 
 }

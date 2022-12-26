@@ -3,9 +3,11 @@
 
 #include "gl_utils.h"
 
-#include <imgui.h>
+//#include <imgui.h>
+#include "imgui_build.h"
 
 namespace Atlas {
+
 
 	Application *Application::s_Instance = nullptr;
 
@@ -21,8 +23,10 @@ namespace Atlas {
 		m_Window->set_event_callback(BIND_EVENT_FN(Application::on_event));
 
 		gl_utils::init_opengl();
-		gl_utils::init_imgui(m_Window->get_native_window());
 		gl_utils::init();
+
+		m_ImGuiLayer = make_ref<ImGuiLayer>();
+		push_layer(m_ImGuiLayer);
 	}
 
 	Application::~Application()
@@ -43,28 +47,24 @@ namespace Atlas {
 
 		while (!m_Window->should_close()) {
 
+			m_Window->on_update();
+			if (m_Window->is_minimized()) continue;
+
 			ATL_FRAME("MainThread");
 
 			float time = (float)m_Window->get_time();
 			Timestep timestep = time - m_LastFrameTime;
 			m_LastFrameTime = time;
 
-			if (!m_WindowMinimized) {
+			m_ImGuiLayer->begin();
 
-				ATL_EVENT("draw loop");
 
-				//m_ImGuiLayer->begin();
+			for (auto &layer : m_LayerStack) layer->on_update(timestep);
+			for (auto &layer : m_LayerStack) layer->on_imgui();
 
-				for (auto &layer : m_LayerStack) {
-					layer->on_update(timestep);
-				}
+			gl_utils::update();
 
-				gl_utils::update();
-
-				for (auto &layer : m_LayerStack) layer->on_imgui();
-			}
-
-			m_Window->on_update();
+			m_ImGuiLayer->end();
 
 			for (Event e : m_QueuedEvents) on_event(e);
 			m_QueuedEvents.clear();
@@ -98,11 +98,6 @@ namespace Atlas {
 			queue_event(e);
 		}
 	}
-
-	//vkutil::VulkanManager &Application::get_vulkan_manager()
-	//{
-	//	return get_instance()->m_Engine->get_manager();
-	//}
 
 	Window &Application::get_window()
 	{

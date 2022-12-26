@@ -2,7 +2,6 @@
 
 #include <glm/glm.hpp>
 
-#include "layer.h"
 #include "event.h"
 
 namespace Atlas {
@@ -20,7 +19,7 @@ namespace Atlas {
 
 	class CameraController {
 	public:
-		virtual void on_update(Timestep ts) = 0;
+		virtual void on_update(float ts) = 0;
 		virtual void on_event(Event &e) = 0;
 
 		virtual Camera &get_camera() = 0;
@@ -77,7 +76,7 @@ namespace Atlas {
 	public:
 		OrthographicCameraController(bool roation = false);
 
-		void on_update(Timestep ts) override;
+		void on_update(float ts) override;
 		void on_event(Event &e) override;
 
 		OrthographicCamera &get_camera() override { return m_Camera; }
@@ -144,7 +143,7 @@ namespace Atlas {
 	public:
 		PerspectiveCameraController(float aspecRatio = 1.5707f);
 
-		void on_update(Timestep ts) override;
+		void on_update(float ts) override;
 		void on_event(Event &e) override;
 
 		inline void set_fov(float fov) { m_Camera.set_fov(fov); }

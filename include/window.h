@@ -34,6 +34,7 @@ namespace Atlas {
 
 		bool is_key_pressed(Atlas::KeyCode key);
 		bool is_mouse_button_pressed(int button);
+		bool is_minimized();
 
 		void set_event_callback(const EventCallbackFn &callback);
 		const EventCallbackFn &get_event_callback() const;
@@ -49,6 +50,7 @@ namespace Atlas {
 		std::string m_Title;
 		uint32_t m_Width{ 0 };
 		uint32_t m_Height{ 0 };
+
 		EventCallbackFn m_EventCallBackFn;
 	};
 
