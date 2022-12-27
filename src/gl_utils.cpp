@@ -37,6 +37,20 @@ struct Vertex {
 
 namespace gl_utils {
 
+	void create_texture2D(uint32_t width, uint32_t height, GLenum format, bool mipmap, GLenum minFilter, GLenum magFilter, uint32_t *texture) {
+		uint32_t id;
+		glCreateTextures(GL_TEXTURE_2D, 1, &id);
+		glTextureStorage2D(id, 1, format, width, height);
+
+		glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, minFilter);
+		glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, magFilter);
+		if (mipmap) glGenerateTextureMipmap(id);
+
+		*texture = id;
+	}
+
 	void create_texture2D(uint32_t width, uint32_t height, GLenum format, bool mipmap, uint32_t *texture) {
 		uint32_t id;
 		glCreateTextures(GL_TEXTURE_2D, 1, &id);
@@ -211,7 +225,7 @@ namespace gl_utils {
 		glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCKS, &count);
 		for (int i = 0; i < count; i++) {
 			int binding, dataSize, nameLen;
-			glGetActiveUniformBlockName(program, (uint32_t)i, buffer.size(), &nameLen, buffer.data());
+			glGetActiveUniformBlockName(program, (uint32_t)i, (int)buffer.size(), &nameLen, buffer.data());
 			glGetActiveUniformBlockiv(program, (uint32_t)i, GL_UNIFORM_BLOCK_BINDING, &binding);
 			glGetActiveUniformBlockiv(program, (uint32_t)i, GL_UNIFORM_BLOCK_DATA_SIZE, &dataSize);
 			std::string name(buffer.data(), nameLen);
@@ -229,6 +243,11 @@ namespace gl_utils {
 
 	}
 
+	void resize_viewport(uint32_t width, uint32_t height)
+	{
+		glViewport(0, 0, width, height);
+	}
+
 
 	GLTexture2D::GLTexture2D(const GLTexture2DCreateInfo &info)
 		: m_Width(info.width), m_Height(info.height), m_Format(info.format), m_Mipmap(info.mipmap)
@@ -236,7 +255,7 @@ namespace gl_utils {
 		CORE_ASSERT(m_Width, "GLTexture2D::GLTexture2D: width is zero");
 		CORE_ASSERT(m_Height, "GLTexture2D::GLTexture2D: height is zero");
 
-		create_texture2D(info.width, info.height, info.format, info.mipmap, &m_ID);
+		create_texture2D(info.width, info.height, info.format, info.mipmap, info.minFilter, info.magFilter, &m_ID);
 	}
 
 	GLTexture2D::~GLTexture2D()
@@ -249,7 +268,7 @@ namespace gl_utils {
 		set_texture2D_data(m_ID, m_Width, m_Height, format, data);
 	}
 
-	void GLTexture2D::bind(int indx)
+	void GLTexture2D::bind(uint32_t indx)
 	{
 		glActiveTexture(GL_TEXTURE0 + indx);
 		glBindTexture(GL_TEXTURE_2D, m_ID);
@@ -288,6 +307,8 @@ namespace gl_utils {
 		info.height = height;
 		info.width = width;
 		info.mipmap = true;
+		info.minFilter = GL_LINEAR_MIPMAP_LINEAR;
+		info.magFilter = GL_LINEAR;
 
 		Ref<GLTexture2D> tex = make_ref<GLTexture2D>(info);
 		tex->set_data(data, dataFormat);
@@ -377,7 +398,12 @@ namespace gl_utils {
 
 	bool GLFramebuffer::check_status()
 	{
-		return (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+		return (glCheckNamedFramebufferStatus(m_FBO, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+	}
+
+	GLenum GLFramebuffer::get_status()
+	{
+		return glCheckNamedFramebufferStatus(m_FBO, GL_FRAMEBUFFER);
 	}
 
 	GLShader::GLShader(const GLShaderCreateInfo &info)
@@ -632,12 +658,11 @@ namespace gl_utils {
 		CORE_TRACE("");
 	}
 
-	Ref<GLFramebuffer> FBO;
 	Ref<VertexLayout> VAO;
 	Ref<GLBuffer> VBO, IBO, cameraBuffer;
 	Ref<GLShader> shader;
-	Ref<GLTexture2D> texture, colorBuffer;
-	Ref<GLRenderbuffer> depthBuffer;
+	Ref<GLTexture2D> texture;
+	//Ref<GLRenderbuffer> depthBuffer;
 
 	void init() {
 
@@ -699,37 +724,25 @@ namespace gl_utils {
 
 		texture = load_texture2D("assets/images/uv_checker.png");
 
-		{
-			GLTexture2DCreateInfo info{};
-			info.width = 900;
-			info.height = 900;
-			info.mipmap = false;
-			info.format = GL_RGB8;
-			colorBuffer = make_ref<GLTexture2D>(info);
-		}
-		{
-			GLRenderbufferCreateInfo info{};
-			info.width = 900;
-			info.height = 900;
-			info.format = GL_DEPTH24_STENCIL8;
-			depthBuffer = make_ref<GLRenderbuffer>(info);
-		}
+		//{
+		//	GLRenderbufferCreateInfo info{};
+		//	info.width = 900;
+		//	info.height = 900;
+		//	info.format = GL_DEPTH24_STENCIL8;
+		//	depthBuffer = make_ref<GLRenderbuffer>(info);
+		//}
 
-		FBO = make_ref<GLFramebuffer>();
-		FBO->push_tex_attachment(GL_COLOR_ATTACHMENT0, colorBuffer->id());
-		FBO->push_rbo_attachment(GL_DEPTH_STENCIL_ATTACHMENT, depthBuffer->id());
-
-		if (!FBO->check_status())
-			CORE_WARN("ERROR::FRAMEBUFFER: Framebuffer is not complete!");
-
+		//FBO = make_ref<GLFramebuffer>();
+		//FBO->push_tex_attachment(GL_COLOR_ATTACHMENT0, colorBuffer->id());
+		//FBO->push_rbo_attachment(GL_DEPTH_STENCIL_ATTACHMENT, depthBuffer->id());
 	}
 
 	void update() {
 
-		FBO->bind();
-		glViewport(0, 0, colorBuffer->width(), colorBuffer->height());
+		//FBO->bind();
+		//glViewport(0, 0, colorBuffer->width(), colorBuffer->height());
 
-		ImGui::ShowDemoWindow();
+		//ImGui::ShowDemoWindow();
 
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -746,16 +759,16 @@ namespace gl_utils {
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("Viewport");
-		ImGui::PopStyleVar();
-		ImGui::BeginChild("Viewport");
+		//ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		//ImGui::Begin("Viewport");
+		//ImGui::PopStyleVar();
+		//ImGui::BeginChild("Viewport");
 
-		ImVec2 wSize = ImGui::GetWindowSize();
-		ImGui::Image((void *)colorBuffer->id(), wSize, { 0, 1 }, { 1, 0 });
+		//ImVec2 wSize = ImGui::GetWindowSize();
+		//ImGui::Image((void *)colorBuffer->id(), wSize, { 0, 1 }, { 1, 0 });
 
-		ImGui::EndChild();
-		ImGui::End();
+		//ImGui::EndChild();
+		//ImGui::End();
 
 	}
 

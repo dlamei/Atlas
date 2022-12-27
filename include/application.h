@@ -1,8 +1,6 @@
 #pragma once
 #include "event.h"
-
-#include <glm/glm.hpp>
-
+#include "atl_types.h"
 
 namespace Atlas {
 	class Window;
@@ -76,11 +74,10 @@ namespace Atlas {
 
 		std::vector<Event> m_QueuedEvents;
 
-		//Ref<Texture> m_ColorTexture;
-		//Ref<Texture> m_DepthTexture;
-		glm::vec2 m_ViewportSize;
+		Texture2D m_ColorTexture;
+		FrameBuffer m_Framebuffer;
 
-		//float data[100] = { 1, 2, 3, 4, 3, 2, 1 };
+		glm::vec2 m_ViewportSize;
 
 		static Application *s_Instance;
 	};

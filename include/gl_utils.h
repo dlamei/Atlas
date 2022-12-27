@@ -34,12 +34,17 @@ namespace gl_utils {
 	bool link_shader_modules(uint32_t *modules, uint32_t moduleCount, uint32_t *programID);
 	void reflect_shader(uint32_t program, GLShaderReflectionData *data);
 
+	void resize_viewport(uint32_t width, uint32_t height);
+
 	void init_opengl();
 
 	struct GLTexture2DCreateInfo {
 		uint32_t width;
 		uint32_t height;
 		GLenum format;
+
+		GLenum minFilter;
+		GLenum magFilter;
 
 		bool mipmap;
 	};
@@ -51,8 +56,8 @@ namespace gl_utils {
 		GLTexture2D(const GLTexture2D &) = delete;
 		~GLTexture2D();
 
-		void set_data(void *data, GLenum size);
-		void bind(int indx = 0);
+		void set_data(void *data, GLenum format);
+		void bind(uint32_t indx = 0);
 
 		inline uint32_t id() { return m_ID; }
 		inline uint32_t width() { return m_Width; }
@@ -169,6 +174,7 @@ namespace gl_utils {
 		void push_rbo_attachment(GLenum attachment, uint32_t rbo);
 
 		bool check_status();
+		GLenum get_status();
 
 	private:
 		uint32_t m_FBO;

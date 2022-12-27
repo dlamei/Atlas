@@ -27,6 +27,11 @@ namespace Atlas {
 
 		m_ImGuiLayer = make_ref<ImGuiLayer>();
 		push_layer(m_ImGuiLayer);
+
+		m_ColorTexture = Texture2D::color((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y, TextureFilter::NEAREST);
+
+		m_Framebuffer = FrameBuffer({ m_ColorTexture });
+
 	}
 
 	Application::~Application()
@@ -50,6 +55,7 @@ namespace Atlas {
 			m_Window->on_update();
 			if (m_Window->is_minimized()) continue;
 
+
 			ATL_FRAME("MainThread");
 
 			float time = (float)m_Window->get_time();
@@ -58,16 +64,22 @@ namespace Atlas {
 
 			m_ImGuiLayer->begin();
 
+			for (Event e : m_QueuedEvents) on_event(e);
+			m_QueuedEvents.clear();
 
 			for (auto &layer : m_LayerStack) layer->on_update(timestep);
 			for (auto &layer : m_LayerStack) layer->on_imgui();
 
+			m_Framebuffer.m_Framebuffer->bind();
+
 			gl_utils::update();
+
+			FrameBuffer::unbind();
+
+			render_viewport();
 
 			m_ImGuiLayer->end();
 
-			for (Event e : m_QueuedEvents) on_event(e);
-			m_QueuedEvents.clear();
 		}
 	}
 
@@ -87,7 +99,7 @@ namespace Atlas {
 		viewportBounds[1] = { viewportMaxRegion.x + viewportOffset.x, viewportMaxRegion.y + viewportOffset.y };
 		auto viewportSize = viewportBounds[1] - viewportBounds[0];
 
-		//ImGui::Image(m_ColorTexture->get_id(), { viewportSize.x, viewportSize.y });
+		ImGui::Image(m_ColorTexture, { viewportSize.x, viewportSize.y });
 		ImGui::End();
 
 		ImGui::ShowDemoWindow();
@@ -144,7 +156,7 @@ namespace Atlas {
 
 	void Application::on_event(Event &event)
 	{
-		//if (!event.in_category(EventCategoryMouse)) CORE_TRACE("event: {}", event);
+		//if (!event.in_category(EventCategoryMouse)) CORE_TRACE("event: {}", event.to_string());
 
 		EventDispatcher(event)
 			.dispatch<WindowResizedEvent>(BIND_EVENT_FN(Application::on_window_resized))
@@ -162,7 +174,6 @@ namespace Atlas {
 		if (e.width == 0 || e.height == 0) m_WindowMinimized = true;
 		else m_WindowMinimized = false;
 
-		//m_Engine->resize_window(e.width, e.height);
 
 		return false;
 	}
@@ -171,8 +182,12 @@ namespace Atlas {
 	{
 		m_ViewportSize = { e.width, e.height };
 
-		//m_ColorTexture = make_ref<Texture>(e.width, e.height, TextureFormat::R8G8B8A8);
-		//m_DepthTexture = make_ref<Texture>(e.width, e.height, TextureFormat::D32);
+		gl_utils::resize_viewport(e.width / 10, e.height / 10);
+
+		if (e.width == 0 || e.height == 0) return false;
+
+		m_ColorTexture = Texture2D::color(e.width / 10, e.height / 10);
+		m_Framebuffer.set_color_attachment(m_ColorTexture, 0);
 
 		return false;
 	}

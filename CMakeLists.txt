@@ -32,6 +32,7 @@ set(HEADERS
 	include/camera.h
 	include/application.h
 	include/atl_types.h
+	include/gl_atl_utils.h
 	)
 
 set(EMBEDED
