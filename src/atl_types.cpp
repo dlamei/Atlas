@@ -3,10 +3,12 @@
 #include "gl_utils.h"
 #include "gl_atl_utils.h"
 
-void ImGui::Image(Atlas::Texture2D &texture, const ImVec2 &size, const ImVec2 &uv0, const ImVec2 &uv1,
-	const ImVec4 &tint_col, const ImVec4 &border_col) {
+#include <stb_image.h>
 
-	ImGui::Image((ImTextureID)texture.get_native(), size, uv0, uv1, tint_col, border_col);
+void ImGui::Image(const Atlas::Texture2D &texture, const ImVec2 &size, const ImVec2 &uv0, const ImVec2 &uv1,
+	const ImVec4 &tint_col, const ImVec4 &border_col) {
+	uintptr_t ptr = texture.get_native();
+	ImGui::Image(reinterpret_cast<void *>(ptr), size, uv0, uv1, tint_col, border_col);
 }
 
 namespace Atlas {
@@ -92,10 +94,48 @@ namespace Atlas {
 		return Texture2D(info);
 	}
 
+	std::optional<Texture2D> Texture2D::load(const char *file, TextureFilter filter)
+	{
+		int width, height, channels;
+
+		stbi_set_flip_vertically_on_load(true);
+
+		stbi_uc *data = nullptr;
+		data = stbi_load(file, &width, &height, &channels, 0);
+
+		if (!data || stbi_failure_reason()) {
+			CORE_WARN("Failed to load image: {}", file);
+			CORE_WARN("{}", stbi_failure_reason());
+			return std::nullopt;
+		}
+
+		Texture2DCreateInfo info{};
+		info.width = width;
+		info.height = height;
+		info.mipmap = true;
+		info.filter = filter;
+
+		if (channels == 4)
+		{
+			info.format = ColorFormat::R8G8B8A8;
+		}
+		else if (channels == 3)
+		{
+			info.format = ColorFormat::R8G8B8;
+		}
+
+		Texture2D tex = Texture2D(info);
+		tex.set_data((Color *)data);
+
+		stbi_image_free(data);
+
+		return tex;
+	}
+
 	void Texture2D::set_data(Color *data)
 	{
 		CORE_ASSERT(m_Texture, "Texture2D::set_data: texture was not initialized!");
-		m_Texture->set_data(data, color_format_to_gl_enum(m_Format));
+		m_Texture->set_data(data, color_format_to_int_gl_enum(m_Format));
 	}
 
 	void Texture2D::bind(uint32_t indx)
@@ -121,7 +161,7 @@ namespace Atlas {
 		return m_Texture->has_mipmap();
 	}
 
-	uint32_t Texture2D::get_native()
+	uint32_t Texture2D::get_native() const
 	{
 		return m_Texture->id();
 	}
@@ -137,7 +177,7 @@ namespace Atlas {
 
 		uint32_t colorAttachmentIndx{ 0 };
 
-		for (Attachment a : attachments) {
+		for (Attachment &a : attachments) {
 			if (!a.is_init()) {
 				CORE_WARN("FrameBuffer::FrameBuffer: texture is not initialized!");
 				return;
@@ -182,6 +222,12 @@ namespace Atlas {
 
 		m_DepthStencilTexture = texture;
 		m_Framebuffer->push_tex_attachment(color_format_to_gl_attachment(texture.format()), texture.get_native());
+	}
+
+	const Texture2D &FrameBuffer::get_color_attachment(uint32_t index)
+	{
+		CORE_ASSERT(index < m_ColorTextures.size(), "FrameBuffer::get_color_attachment: error, index out of range!");
+		return m_ColorTextures.at(index);
 	}
 
 	void FrameBuffer::bind()

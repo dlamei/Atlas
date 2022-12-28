@@ -18,7 +18,7 @@ namespace Atlas {
 
 		m_ViewportSize = { 1600, 900 };
 
-		WindowCreateInfo info = { "Vulkan Engine", 1600, 900 };
+		WindowCreateInfo info = { "Atlas Engine", 1600, 900 };
 		m_Window = make_scope<Window>(info);
 		m_Window->set_event_callback(BIND_EVENT_FN(Application::on_event));
 
@@ -28,9 +28,8 @@ namespace Atlas {
 		m_ImGuiLayer = make_ref<ImGuiLayer>();
 		push_layer(m_ImGuiLayer);
 
-		m_ColorTexture = Texture2D::color((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y, TextureFilter::NEAREST);
-
-		m_Framebuffer = FrameBuffer({ m_ColorTexture });
+		Texture2D colBuffer = Texture2D::color((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y, TextureFilter::NEAREST);
+		m_Framebuffer = FrameBuffer({ colBuffer });
 
 	}
 
@@ -70,7 +69,7 @@ namespace Atlas {
 			for (auto &layer : m_LayerStack) layer->on_update(timestep);
 			for (auto &layer : m_LayerStack) layer->on_imgui();
 
-			m_Framebuffer.m_Framebuffer->bind();
+			m_Framebuffer.bind();
 
 			gl_utils::update();
 
@@ -99,7 +98,7 @@ namespace Atlas {
 		viewportBounds[1] = { viewportMaxRegion.x + viewportOffset.x, viewportMaxRegion.y + viewportOffset.y };
 		auto viewportSize = viewportBounds[1] - viewportBounds[0];
 
-		ImGui::Image(m_ColorTexture, { viewportSize.x, viewportSize.y });
+		ImGui::Image(m_Framebuffer.get_color_attachment(0), { viewportSize.x, viewportSize.y });
 		ImGui::End();
 
 		ImGui::ShowDemoWindow();
@@ -182,12 +181,12 @@ namespace Atlas {
 	{
 		m_ViewportSize = { e.width, e.height };
 
-		gl_utils::resize_viewport(e.width / 10, e.height / 10);
+		gl_utils::resize_viewport(e.width, e.height);
 
 		if (e.width == 0 || e.height == 0) return false;
 
-		m_ColorTexture = Texture2D::color(e.width / 10, e.height / 10);
-		m_Framebuffer.set_color_attachment(m_ColorTexture, 0);
+		Texture2D colBuffer = Texture2D::color(e.width, e.height);
+		m_Framebuffer.set_color_attachment(colBuffer, 0);
 
 		return false;
 	}

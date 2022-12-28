@@ -42,8 +42,6 @@ target_sources(imgui
 target_include_directories( imgui
 	PUBLIC imgui
 	PUBLIC imgui/backends
-
-	PUBLIC ${VULKAN_INCLUDE_DIRS}
 	)
 
 target_link_libraries(imgui PUBLIC glfw)

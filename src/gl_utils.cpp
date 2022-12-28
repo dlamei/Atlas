@@ -203,7 +203,7 @@ namespace gl_utils {
 		for (int i = 0; i < count; i++) {
 			GLenum type;
 			int nameLen, size, location;
-			glGetActiveUniform(program, (uint32_t)i, buffer.size(), &nameLen, &size, &type, buffer.data());
+			glGetActiveUniform(program, (uint32_t)i, (int)buffer.size(), &nameLen, &size, &type, buffer.data());
 			if (type == GL_UNIFORM_BLOCK) continue;
 			std::string name(buffer.data(), nameLen);
 			location = glGetUniformLocation(program, name.c_str());

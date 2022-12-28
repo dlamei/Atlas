@@ -3,8 +3,20 @@
 #include "atl_types.h"
 #include "gl_utils.h"
 
+GLenum color_format_to_int_gl_enum(Atlas::ColorFormat format) {
+	switch (format) {
+	case Atlas::ColorFormat::R8G8B8: return GL_RGB;
+	case Atlas::ColorFormat::R8G8B8A8: return GL_RGBA;
+	case Atlas::ColorFormat::D32: return GL_DEPTH_COMPONENT;
+	}
+
+	CORE_ASSERT(false, "color_format_to_gl_enum: color format {} not defined", (uint32_t)format);
+	return 0;
+}
+
 GLenum color_format_to_gl_enum(Atlas::ColorFormat format) {
 	switch (format) {
+	case Atlas::ColorFormat::R8G8B8: return GL_RGB8;
 	case Atlas::ColorFormat::R8G8B8A8: return GL_RGBA8;
 	case Atlas::ColorFormat::D32: return GL_DEPTH_COMPONENT32F;
 	case Atlas::ColorFormat::D24S8: return GL_DEPTH24_STENCIL8;
@@ -16,7 +28,9 @@ GLenum color_format_to_gl_enum(Atlas::ColorFormat format) {
 
 bool is_color_attachment(Atlas::ColorFormat format) {
 	switch (format) {
+	case Atlas::ColorFormat::R8G8B8:
 	case Atlas::ColorFormat::R8G8B8A8: return true;
+
 	case Atlas::ColorFormat::D32: return false;
 	case Atlas::ColorFormat::D24S8: return false;
 	}
@@ -29,6 +43,7 @@ GLenum color_format_to_gl_attachment(Atlas::ColorFormat format) {
 	switch (format)
 	{
 	case Atlas::ColorFormat::R8G8B8A8: return GL_COLOR_ATTACHMENT0;
+	case Atlas::ColorFormat::R8G8B8: return GL_COLOR_ATTACHMENT0;
 	case Atlas::ColorFormat::D32: return GL_DEPTH_ATTACHMENT;
 	case Atlas::ColorFormat::D24S8: return GL_DEPTH_STENCIL_ATTACHMENT;
 	}

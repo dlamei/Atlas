@@ -54,7 +54,7 @@ namespace Atlas {
 
 		static glm::vec2 &get_viewport_size();
 
-		//static Ref<Texture> get_viewport_color_texture();
+		//Texture2D get_viewport_color_texture();
 		//static Ref<Texture> get_viewport_depth_texture();
 
 	private:
@@ -74,7 +74,6 @@ namespace Atlas {
 
 		std::vector<Event> m_QueuedEvents;
 
-		Texture2D m_ColorTexture;
 		FrameBuffer m_Framebuffer;
 
 		glm::vec2 m_ViewportSize;
