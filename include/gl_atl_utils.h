@@ -73,3 +73,26 @@ GLenum texture_mag_filter_to_gl_enum(Atlas::TextureFilter filter, bool mipmap) {
 	CORE_ASSERT(false, "texture_min_filter_to_gl_enum: texture format {} not defined", (uint32_t)filter);
 	return 0;
 }
+
+GLenum buffer_usage_to_gl_enum(Atlas::BufferUsage usage) {
+	switch (usage)
+	{
+	case Atlas::BufferUsage::STATIC_DRAW: return GL_STATIC_DRAW;
+	case Atlas::BufferUsage::DYNAMIC_DRAW: return GL_DYNAMIC_DRAW;
+	}
+
+	CORE_ASSERT(false, "buffer_usage_to_gl_enum: texture format {} not defined", (uint32_t)usage);
+	return 0;
+}
+
+GLenum shader_type_to_gl_enum(Atlas::ShaderType type) {
+	switch (type)
+	{
+	case Atlas::ShaderType::VERTEX: return GL_VERTEX_SHADER;
+	case Atlas::ShaderType::FRAGMENT: return GL_FRAGMENT_SHADER;
+	case Atlas::ShaderType::COMPUTE: return GL_COMPUTE_SHADER;
+	}
+
+	CORE_ASSERT(false, "shader_type_to_gl_enum: shader type {} not defined", (uint32_t)type);
+	return 0;
+}

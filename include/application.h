@@ -74,7 +74,8 @@ namespace Atlas {
 
 		std::vector<Event> m_QueuedEvents;
 
-		FrameBuffer m_Framebuffer;
+		Framebuffer m_Framebuffer;
+		Shader m_Shader;
 
 		glm::vec2 m_ViewportSize;
 

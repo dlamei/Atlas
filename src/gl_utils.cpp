@@ -351,6 +351,11 @@ namespace gl_utils {
 		glDeleteBuffers(1, &m_ID);
 	}
 
+	void bind_shader(Ref<GLShader> shader)
+	{
+		glUseProgram(shader->id());
+	}
+
 	void bind_vertex_buffer(Ref<GLBuffer> GLBuffer, size_t stride, uint32_t indx, uint32_t offset) {
 		glBindVertexBuffer(indx, GLBuffer->id(), offset, (GLsizei)stride);
 	}
@@ -438,108 +443,108 @@ namespace gl_utils {
 		glDeleteProgram(m_ID);
 	}
 
-	void GLShader::bind()
-	{
-		glUseProgram(m_ID);
-	}
+	//void GLShader::bind()
+	//{
+	//	glUseProgram(m_ID);
+	//}
 
-	void GLShader::set_int(const std::string &name, int32_t value)
+	void GLShader::set_int(const char *name, int32_t value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform1i(m_ID, location, value);
 	}
 
-	void GLShader::set_int2(const std::string &name, const glm::ivec2 &value)
+	void GLShader::set_int2(const char *name, const glm::ivec2 &value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform2i(m_ID, location, value.x, value.y);
 	}
 
-	void GLShader::set_int3(const std::string &name, const glm::ivec3 &value)
+	void GLShader::set_int3(const char *name, const glm::ivec3 &value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform3i(m_ID, location, value.x, value.y, value.z);
 	}
 
-	void GLShader::set_int4(const std::string &name, const glm::ivec4 &value)
+	void GLShader::set_int4(const char *name, const glm::ivec4 &value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform4i(m_ID, location, value.x, value.y, value.z, value.w);
 	}
 
-	void GLShader::set_int_vec(const std::string &name, int32_t *data, size_t count)
+	void GLShader::set_int_vec(const char *name, int32_t *data, size_t count)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform1iv(m_ID, location, (int)count, data);
 	}
 
-	void GLShader::set_uint(const std::string &name, uint32_t value)
+	void GLShader::set_uint(const char *name, uint32_t value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform1ui(m_ID, location, value);
 	}
 
-	void GLShader::set_uint2(const std::string &name, const glm::uvec2 &value)
+	void GLShader::set_uint2(const char *name, const glm::uvec2 &value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform2ui(m_ID, location, value.x, value.y);
 	}
 
-	void GLShader::set_uint3(const std::string &name, const glm::uvec3 &value)
+	void GLShader::set_uint3(const char *name, const glm::uvec3 &value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform3ui(m_ID, location, value.x, value.y, value.z);
 	}
 
-	void GLShader::set_uint4(const std::string &name, const glm::uvec4 &value)
+	void GLShader::set_uint4(const char *name, const glm::uvec4 &value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform4ui(m_ID, location, value.x, value.y, value.z, value.w);
 	}
 
-	void GLShader::set_uint_vec(const std::string &name, uint32_t *data, size_t count)
+	void GLShader::set_uint_vec(const char *name, uint32_t *data, size_t count)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform1uiv(m_ID, location, (int)count, data);
 	}
 
-	void GLShader::set_float(const std::string &name, float value)
+	void GLShader::set_float(const char *name, float value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform1f(m_ID, location, value);
 	}
 
-	void GLShader::set_float2(const std::string &name, const glm::vec2 &value)
+	void GLShader::set_float2(const char *name, const glm::vec2 &value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform2f(m_ID, location, value.x, value.y);
 	}
 
-	void GLShader::set_float3(const std::string &name, const glm::vec3 &value)
+	void GLShader::set_float3(const char *name, const glm::vec3 &value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform3f(m_ID, location, value.x, value.y, value.z);
 	}
 
-	void GLShader::set_float4(const std::string &name, const glm::vec4 &value)
+	void GLShader::set_float4(const char *name, const glm::vec4 &value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform4f(m_ID, location, value.x, value.y, value.z, value.w);
 	}
 
-	void GLShader::set_float_vec(const std::string &name, float *data, size_t count)
+	void GLShader::set_float_vec(const char *name, float *data, size_t count)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform1fv(m_ID, location, (int)count, data);
 	}
 
-	void GLShader::set_mat3(const std::string &name, const glm::mat3 &value)
+	void GLShader::set_mat3(const char *name, const glm::mat3 &value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniformMatrix3fv(m_ID, location, 1, false, glm::value_ptr(value));
 	}
 
-	void GLShader::set_mat4(const std::string &name, const glm::mat4 &value)
+	void GLShader::set_mat4(const char *name, const glm::mat4 &value)
 	{
 		int location = get_uniform_location(name);
 		glProgramUniformMatrix4fv(m_ID, location, 1, false, glm::value_ptr(value));
@@ -574,25 +579,25 @@ namespace gl_utils {
 		return m_ReflectionData.unifromBlocks.find(name)->second.binding;
 	}
 
-	VertexLayout::VertexLayout()
+	GLVertexLayout::GLVertexLayout()
 	{
 		glCreateVertexArrays(1, &m_VAO);
 	}
 
-	VertexLayout::~VertexLayout()
+	GLVertexLayout::~GLVertexLayout()
 	{
 		glDeleteVertexArrays(1, &m_VAO);
 	}
 
-	void VertexLayout::push_attrib(uint32_t count, GLenum type, uint32_t offset, uint32_t bufferIndx)
+	void GLVertexLayout::push_attrib(uint32_t count, GLenum type, uint32_t offset, uint32_t bufferIndx)
 	{
 		glEnableVertexArrayAttrib(m_VAO, m_AttribIndx);
-		glVertexArrayAttribFormat(m_VAO, m_AttribIndx, 3, GL_FLOAT, false, offsetof(Vertex, Vertex::pos));
+		glVertexArrayAttribFormat(m_VAO, m_AttribIndx, count, type, false, offset);
 		glVertexArrayAttribBinding(m_VAO, m_AttribIndx, bufferIndx);
 		m_AttribIndx++;
 	}
 
-	void VertexLayout::bind()
+	void GLVertexLayout::bind()
 	{
 		glBindVertexArray(m_VAO);
 	}
@@ -654,11 +659,10 @@ namespace gl_utils {
 		CORE_TRACE("OpenGL Info:");
 		CORE_TRACE(" vendor:	{}", (const char *)glGetString(GL_VENDOR));
 		CORE_TRACE(" renderer:	{}", (const char *)glGetString(GL_RENDERER));
-		CORE_TRACE(" version:	{}", (const char *)glGetString(GL_VERSION));
-		CORE_TRACE("");
+		CORE_TRACE(" version:	{}\n", (const char *)glGetString(GL_VERSION));
 	}
 
-	Ref<VertexLayout> VAO;
+	Ref<GLVertexLayout> VAO;
 	Ref<GLBuffer> VBO, IBO, cameraBuffer;
 	Ref<GLShader> shader;
 	Ref<GLTexture2D> texture;
@@ -696,7 +700,7 @@ namespace gl_utils {
 			IBO = make_ref<GLBuffer>(info);
 		}
 
-		VAO = make_ref<VertexLayout>();
+		VAO = make_ref<GLVertexLayout>();
 		VAO->push_attrib(3, GL_FLOAT, offsetof(Vertex, Vertex::pos));
 		VAO->push_attrib(2, GL_FLOAT, offsetof(Vertex, Vertex::uv));
 
@@ -749,8 +753,8 @@ namespace gl_utils {
 
 		texture->bind();
 
-		shader->bind();
-		VAO->bind();
+		//bind_shader(shader);
+		//VAO->bind();
 
 		bind_vertex_buffer(VBO, sizeof(Vertex));
 		bind_index_buffer(IBO);

@@ -6,6 +6,11 @@
 //#include <imgui.h>
 #include "imgui_build.h"
 
+struct Vertex {
+	glm::vec3 pos;
+	glm::vec2 uv;
+};
+
 namespace Atlas {
 
 
@@ -29,8 +34,12 @@ namespace Atlas {
 		push_layer(m_ImGuiLayer);
 
 		Texture2D colBuffer = Texture2D::color((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y, TextureFilter::NEAREST);
-		m_Framebuffer = FrameBuffer({ colBuffer });
+		m_Framebuffer = Framebuffer({ colBuffer });
 
+		VertexLayout layout = VertexLayout::from(&Vertex::pos, &Vertex::uv);
+
+		m_Shader = Shader::load("assets/shaders/default.vert", "assets/shaders/default.frag", layout);
+		m_Shader.set_int("tex", 0);
 	}
 
 	Application::~Application()
@@ -56,6 +65,8 @@ namespace Atlas {
 
 
 			ATL_FRAME("MainThread");
+			m_Framebuffer.bind();
+			m_VertexLayout.bind();
 
 			float time = (float)m_Window->get_time();
 			Timestep timestep = time - m_LastFrameTime;
@@ -69,11 +80,12 @@ namespace Atlas {
 			for (auto &layer : m_LayerStack) layer->on_update(timestep);
 			for (auto &layer : m_LayerStack) layer->on_imgui();
 
-			m_Framebuffer.bind();
+
+			Shader::bind(m_Shader);
 
 			gl_utils::update();
 
-			FrameBuffer::unbind();
+			Framebuffer::unbind();
 
 			render_viewport();
 
@@ -172,7 +184,6 @@ namespace Atlas {
 	{
 		if (e.width == 0 || e.height == 0) m_WindowMinimized = true;
 		else m_WindowMinimized = false;
-
 
 		return false;
 	}

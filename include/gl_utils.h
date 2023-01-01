@@ -9,6 +9,12 @@ struct GLFWwindow;
 
 namespace gl_utils {
 
+	class GLTexture2D;
+	class GLBuffer;
+	class GLShader;
+	class GLRenderbuffer;
+	class GLFramebuffer;
+
 	struct GLUniformInfo {
 		GLenum type;
 		int location;
@@ -104,28 +110,28 @@ namespace gl_utils {
 		GLShader(const GLShader &) = delete;
 		~GLShader();
 
-		void bind();
+		//void bind();
 
-		void set_int(const std::string &name, int32_t value);
-		void set_int2(const std::string &name, const glm::ivec2 &value);
-		void set_int3(const std::string &name, const glm::ivec3 &value);
-		void set_int4(const std::string &name, const glm::ivec4 &value);
-		void set_int_vec(const std::string &name, int32_t *data, size_t count);
+		void set_int(const char *name, int32_t value);
+		void set_int2(const char *name, const glm::ivec2 &value);
+		void set_int3(const char *name, const glm::ivec3 &value);
+		void set_int4(const char *name, const glm::ivec4 &value);
+		void set_int_vec(const char *name, int32_t *data, size_t count);
 
-		void set_uint(const std::string &name, uint32_t value);
-		void set_uint2(const std::string &name, const glm::uvec2 &value);
-		void set_uint3(const std::string &name, const glm::uvec3 &value);
-		void set_uint4(const std::string &name, const glm::uvec4 &value);
-		void set_uint_vec(const std::string &name, uint32_t *data, size_t count);
+		void set_uint(const char *name, uint32_t value);
+		void set_uint2(const char *name, const glm::uvec2 &value);
+		void set_uint3(const char *name, const glm::uvec3 &value);
+		void set_uint4(const char *name, const glm::uvec4 &value);
+		void set_uint_vec(const char *name, uint32_t *data, size_t count);
 
-		void set_float(const std::string &name, float value);
-		void set_float2(const std::string &name, const glm::vec2 &value);
-		void set_float3(const std::string &name, const glm::vec3 &value);
-		void set_float4(const std::string &name, const glm::vec4 &value);
-		void set_float_vec(const std::string &name, float *data, size_t count);
+		void set_float(const char *name, float value);
+		void set_float2(const char *name, const glm::vec2 &value);
+		void set_float3(const char *name, const glm::vec3 &value);
+		void set_float4(const char *name, const glm::vec4 &value);
+		void set_float_vec(const char *name, float *data, size_t count);
 
-		void set_mat3(const std::string &name, const glm::mat3 &value);
-		void set_mat4(const std::string &name, const glm::mat4 &value);
+		void set_mat3(const char *name, const glm::mat3 &value);
+		void set_mat4(const char *name, const glm::mat4 &value);
 
 		GLUniformInfo *get_uniform_info(const std::string &name);
 		int get_uniform_location(const std::string &name);
@@ -138,6 +144,8 @@ namespace gl_utils {
 		GLShaderReflectionData m_ReflectionData;
 		//std::unordered_map<std::string, int> m_UniformCache;
 	};
+
+	void bind_shader(Ref<GLShader> shader);
 
 	struct GLRenderbufferCreateInfo {
 		uint32_t width;
@@ -181,12 +189,12 @@ namespace gl_utils {
 		uint32_t m_ColAttachmentIndx{ 0 };
 	};
 
-	class VertexLayout {
+	class GLVertexLayout {
 	public:
 
-		VertexLayout();
-		VertexLayout(const VertexLayout &) = delete;
-		~VertexLayout();
+		GLVertexLayout();
+		GLVertexLayout(const GLVertexLayout &) = delete;
+		~GLVertexLayout();
 
 		void push_attrib(uint32_t count, GLenum type, uint32_t offset, uint32_t bufferIndx = 0);
 		void bind();
