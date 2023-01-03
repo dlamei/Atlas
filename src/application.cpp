@@ -1,10 +1,11 @@
 #include "application.h"
 #include "window.h"
 
-#include "gl_utils.h"
-
-//#include <imgui.h>
+#include <imgui.h>
 #include "imgui_build.h"
+
+#include <glm/glm.hpp>
+#include <glm/gtx/transform.hpp>
 
 struct Vertex {
 	glm::vec3 pos;
@@ -27,19 +28,44 @@ namespace Atlas {
 		m_Window = make_scope<Window>(info);
 		m_Window->set_event_callback(BIND_EVENT_FN(Application::on_event));
 
-		gl_utils::init_opengl();
-		gl_utils::init();
+		RenderApi::init();
 
 		m_ImGuiLayer = make_ref<ImGuiLayer>();
 		push_layer(m_ImGuiLayer);
 
-		Texture2D colBuffer = Texture2D::color((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y, TextureFilter::NEAREST);
-		m_Framebuffer = Framebuffer({ colBuffer });
+		m_ColorBuffer = Texture2D::color((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y, TextureFilter::NEAREST);
 
-		VertexLayout layout = VertexLayout::from(&Vertex::pos, &Vertex::uv);
+		m_Texture = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
 
-		m_Shader = Shader::load("assets/shaders/default.vert", "assets/shaders/default.frag", layout);
-		m_Shader.set_int("tex", 0);
+		{
+			VertexLayout layout = VertexLayout::from(&Vertex::pos, &Vertex::uv);
+			m_Shader = Shader::load("assets/shaders/default.vert", "assets/shaders/default.frag", layout);
+			m_Shader.set("tex", 0);
+
+			Buffer cameraBuffer = Buffer::uniform((glm::mat4)glm::ortho(-1, 1, -1, 1), BufferUsage::DYNAMIC_DRAW);
+			m_Shader.set("CameraBuffer", cameraBuffer);
+
+		}
+
+		{
+			Vertex vertices[] =
+			{
+				{{0, 0, 0}, {0, 0}},
+				{{0, 1, 0}, {0, 1}},
+				{{1, 1, 0}, {1, 1}},
+				{{1, 0, 0}, {1, 0}},
+			};
+
+			uint32_t indices[] =
+			{
+				0, 1, 2,
+				0, 2, 3
+			};
+
+			m_VertexBuffer = Buffer::vertex(vertices, 4);
+			m_IndexBuffer = Buffer::index(indices, 6);
+
+		}
 	}
 
 	Application::~Application()
@@ -59,39 +85,56 @@ namespace Atlas {
 		m_LastFrameTime = (float)m_Window->get_time();
 
 		while (!m_Window->should_close()) {
+			RenderApi::frame_start();
 
 			m_Window->on_update();
 			if (m_Window->is_minimized()) continue;
 
-
 			ATL_FRAME("MainThread");
-			m_Framebuffer.bind();
-			m_VertexLayout.bind();
+			update();
 
-			float time = (float)m_Window->get_time();
-			Timestep timestep = time - m_LastFrameTime;
-			m_LastFrameTime = time;
-
-			m_ImGuiLayer->begin();
-
-			for (Event e : m_QueuedEvents) on_event(e);
-			m_QueuedEvents.clear();
-
-			for (auto &layer : m_LayerStack) layer->on_update(timestep);
-			for (auto &layer : m_LayerStack) layer->on_imgui();
-
-
-			Shader::bind(m_Shader);
-
-			gl_utils::update();
-
-			Framebuffer::unbind();
-
-			render_viewport();
-
-			m_ImGuiLayer->end();
-
+			RenderApi::frame_end();
 		}
+	}
+
+	void Application::update()
+	{
+
+		float time = (float)m_Window->get_time();
+		Timestep timestep = time - m_LastFrameTime;
+		m_LastFrameTime = time;
+
+		m_ImGuiLayer->begin();
+
+		for (Event e : m_QueuedEvents) on_event(e);
+		m_QueuedEvents.clear();
+
+		m_CameraController.on_update(timestep);
+		for (auto &layer : m_LayerStack) layer->on_update(timestep);
+		for (auto &layer : m_LayerStack) layer->on_imgui();
+
+		m_Shader.get_uniform_buffer("CameraBuffer")
+			.set_data(&m_CameraController.get_camera().get_view_projection());
+
+		RenderApi::begin(m_ColorBuffer, { 60, 5, 45 });
+
+		Shader::bind(m_Shader);
+		Texture2D::bind(m_Texture);
+
+		Buffer::bind_vertex(m_VertexBuffer);
+		Buffer::bind_index(m_IndexBuffer);
+
+		RenderApi::draw_indexed(6);
+		RenderApi::end();
+
+		render_viewport();
+
+		m_ImGuiLayer->end();
+	}
+
+	void Application::update_frame()
+	{
+		get_instance()->update();
 	}
 
 	void Application::render_viewport()
@@ -110,7 +153,7 @@ namespace Atlas {
 		viewportBounds[1] = { viewportMaxRegion.x + viewportOffset.x, viewportMaxRegion.y + viewportOffset.y };
 		auto viewportSize = viewportBounds[1] - viewportBounds[0];
 
-		ImGui::Image(m_Framebuffer.get_color_attachment(0), { viewportSize.x, viewportSize.y });
+		ImGui::Image(m_ColorBuffer, { viewportSize.x, viewportSize.y });
 		ImGui::End();
 
 		ImGui::ShowDemoWindow();
@@ -173,6 +216,8 @@ namespace Atlas {
 			.dispatch<WindowResizedEvent>(BIND_EVENT_FN(Application::on_window_resized))
 			.dispatch<ViewportResizedEvent>(BIND_EVENT_FN(Application::on_viewport_resized));
 
+		m_CameraController.on_event(event);
+
 		for (auto &layer : m_LayerStack) {
 			if (event.handled) break;
 
@@ -192,12 +237,11 @@ namespace Atlas {
 	{
 		m_ViewportSize = { e.width, e.height };
 
-		gl_utils::resize_viewport(e.width, e.height);
+		RenderApi::resize_viewport(e.width, e.height);
 
 		if (e.width == 0 || e.height == 0) return false;
 
-		Texture2D colBuffer = Texture2D::color(e.width, e.height);
-		m_Framebuffer.set_color_attachment(colBuffer, 0);
+		m_ColorBuffer = Texture2D::color(e.width, e.height);
 
 		return false;
 	}

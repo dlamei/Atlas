@@ -2,6 +2,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include "application.h"
+
 namespace Atlas {
 
 	void default_event_callback_fn(Event &e) {}
@@ -68,7 +70,7 @@ namespace Atlas {
 
 		glfwMakeContextCurrent(m_Window);
 		gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-		glfwSwapInterval(1);
+		glfwSwapInterval(0);
 
 		{
 			int w, h;
@@ -91,7 +93,8 @@ namespace Atlas {
 		Event e(event);
 		data.m_EventCallBackFn(e);
 
-		//glfwSwapBuffers(data.get_native_window());
+		Application::update_frame();
+		glfwSwapBuffers(data.get_native_window());
 			});
 
 		glfwSetWindowCloseCallback(m_Window, [](GLFWwindow *window) {

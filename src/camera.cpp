@@ -43,10 +43,8 @@ namespace Atlas {
 	}
 
 	OrthographicCameraController::OrthographicCameraController(bool rotation)
-		: m_Camera(-m_AspectRatio * m_ZoomLevel, m_AspectRatio *m_ZoomLevel, -m_ZoomLevel, m_ZoomLevel), m_Rotation(rotation) {
-		auto size = Application::get_viewport_size();
-		m_AspectRatio = (float)size.x / (float)size.y;
-	}
+		: m_Camera(-m_AspectRatio * m_ZoomLevel, m_AspectRatio *m_ZoomLevel, -m_ZoomLevel, m_ZoomLevel),
+		m_Rotation(rotation), m_AspectRatio(1.5707f) {}
 
 	void OrthographicCameraController::on_update(float timestep)
 	{

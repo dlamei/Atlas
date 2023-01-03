@@ -7,11 +7,133 @@
 
 void ImGui::Image(const Atlas::Texture2D &texture, const ImVec2 &size, const ImVec2 &uv0, const ImVec2 &uv1,
 	const ImVec4 &tint_col, const ImVec4 &border_col) {
-	uintptr_t ptr = texture.get_native();
+	uintptr_t ptr = texture.m_Texture->id();
 	ImGui::Image(reinterpret_cast<void *>(ptr), size, uv0, uv1, tint_col, border_col);
 }
 
+namespace RenderApi {
+
+	struct CachedFramebuffer {
+		Atlas::Framebuffer framebuffer;
+		bool used{ false };
+	};
+
+	struct RenderContext {
+		std::unordered_map<size_t, CachedFramebuffer> framebuffers;
+	};
+
+	static RenderContext GlobalRenderContext{};
+
+	void begin(const Atlas::Texture2D &color, Atlas::Color clearColor) {
+
+		size_t hash = color.hash();
+
+		if (GlobalRenderContext.framebuffers.find(hash) != GlobalRenderContext.framebuffers.end()) {
+			auto it = GlobalRenderContext.framebuffers.find(hash);
+			begin(it->second.framebuffer, clearColor);
+			it->second.used = true;
+			return;
+		}
+
+		Atlas::Framebuffer framebuffer = Atlas::Framebuffer::empty();
+		framebuffer.set_color_attachment(color, 0);
+
+		CachedFramebuffer fb{};
+		fb.used = true;
+		fb.framebuffer = framebuffer;
+
+		GlobalRenderContext.framebuffers.insert({ hash, fb });
+		begin(framebuffer, clearColor);
+	}
+
+	void begin(const Atlas::Texture2D &color, const Atlas::Texture2D &depth, Atlas::Color clearColor)
+	{
+		size_t hash = color.hash();
+		hash ^= depth.hash();
+
+		if (GlobalRenderContext.framebuffers.find(hash) != GlobalRenderContext.framebuffers.end()) {
+			auto it = GlobalRenderContext.framebuffers.find(hash);
+			begin(it->second.framebuffer, clearColor);
+			it->second.used = true;
+			return;
+		}
+
+		Atlas::Framebuffer framebuffer = Atlas::Framebuffer::empty();
+		framebuffer.set_color_attachment(color, 0);
+		framebuffer.set_depth_stencil_texture(depth);
+
+		CachedFramebuffer fb{};
+		fb.used = true;
+		fb.framebuffer = framebuffer;
+
+		GlobalRenderContext.framebuffers.insert({ hash, fb });
+		begin(framebuffer, clearColor);
+	}
+
+	void frame_start()
+	{
+		for (auto &it : GlobalRenderContext.framebuffers) {
+			it.second.used = false;
+		}
+	}
+
+	void frame_end()
+	{
+		auto &framebuffers = GlobalRenderContext.framebuffers;
+
+		//TODO: maybe only delete when not used for multiple frames
+		for (auto it = framebuffers.begin(); it != framebuffers.end();) {
+			if (!it->second.used) it = framebuffers.erase(it);
+			else it++;
+		}
+
+	}
+
+	void begin(const Atlas::Framebuffer &frameBuffer, Atlas::Color clearColor, bool clearDepth)
+	{
+		glm::vec4 col = clearColor.normalized();
+
+		Atlas::Framebuffer::bind(frameBuffer);
+
+		glClearColor(col.r, col.g, col.b, col.a);
+		glClear((clearColor.alpha() ? GL_COLOR_BUFFER_BIT : 0) | (clearDepth ? GL_DEPTH_BUFFER_BIT : 0));
+		//if (clearColor.alpha() || clearDepth) {
+		//}
+	}
+
+	void end()
+	{
+		Atlas::Framebuffer::unbind();
+	}
+
+	void draw_indexed(size_t indexCount)
+	{
+		glDrawElements(GL_TRIANGLES, (int)indexCount, GL_UNSIGNED_INT, 0);
+	}
+
+	void init()
+	{
+		gl_utils::init_opengl();
+	}
+
+	void resize_viewport(uint32_t width, uint32_t height)
+	{
+		gl_utils::resize_viewport(width, height);
+	}
+}
+
 namespace Atlas {
+
+	struct BindingContext {
+		Atlas::Shader shader;
+		std::unordered_map<uint32_t, Texture2D> textures;
+		Framebuffer framebuffer;
+		Buffer indexBuffer;
+		std::unordered_map<uint32_t, Buffer> vertexBuffers;
+		VertexLayout layout;
+	};
+
+	static BindingContext GlobalBindingContext{};
 
 	uint32_t to_rgb(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 		uint32_t result = (a << 24) | (r << 16) | (g << 8) | b;
@@ -47,7 +169,7 @@ namespace Atlas {
 		return m_Data >> 24 & 0xff;
 	}
 
-	glm::vec4 Color::normalized_vec()
+	glm::vec4 Color::normalized()
 	{
 		float r = red() / 255.f;
 		float g = green() / 255.f;
@@ -154,38 +276,49 @@ namespace Atlas {
 		return tex;
 	}
 
-	void Texture2D::set_data(Color *data)
+	void Texture2D::bind(const Texture2D &texture, uint32_t indx)
+	{
+		CORE_ASSERT(texture.is_init(), "Texture2D::bind: texture was not initialized!");
+
+		if (GlobalBindingContext.textures.find(indx) != GlobalBindingContext.textures.end()) return;
+
+		texture.m_Texture->bind(indx);
+
+		GlobalBindingContext.textures.insert_or_assign(indx, texture);
+	}
+
+	void Texture2D::set_data(Color *data) const
 	{
 		CORE_ASSERT(m_Texture, "Texture2D::set_data: texture was not initialized!");
 		m_Texture->set_data(data, color_format_to_int_gl_enum(m_Format));
 	}
 
-	void Texture2D::bind(uint32_t indx)
-	{
-		m_Texture->bind(indx);
-	}
+	//void Texture2D::bind(uint32_t indx) const
+	//{
+	//	m_Texture->bind(indx);
+	//}
 
-	uint32_t Texture2D::width()
+	uint32_t Texture2D::width() const
 	{
 		CORE_ASSERT(m_Texture, "Texture2D::width: texture was not initialized!");
 		return m_Texture->width();
 	}
 
-	uint32_t Texture2D::height()
+	uint32_t Texture2D::height() const
 	{
 		CORE_ASSERT(m_Texture, "Texture2D::height: texture was not initialized!");
 		return m_Texture->height();
 	}
 
-	bool Texture2D::has_mipmap()
+	bool Texture2D::has_mipmap() const
 	{
 		CORE_ASSERT(m_Texture, "Texture2D::has_mipmap: texture was not initialized!");
 		return m_Texture->has_mipmap();
 	}
 
-	uint32_t Texture2D::get_native() const
+	size_t Texture2D::hash() const
 	{
-		return m_Texture->id();
+		return std::hash<void *>()(m_Texture.get());
 	}
 
 	Framebuffer::Framebuffer(std::vector<Attachment> attachments)
@@ -212,7 +345,7 @@ namespace Atlas {
 
 			auto attachment = color_format_to_gl_attachment(a.format());
 
-			m_Framebuffer->push_tex_attachment(attachment + colorAttachmentIndx, a.get_native());
+			m_Framebuffer->push_tex_attachment(attachment + colorAttachmentIndx, a.m_Texture->id());
 			m_ColorTextures.insert({ colorAttachmentIndx, a });
 			colorAttachmentIndx++;
 		}
@@ -222,7 +355,7 @@ namespace Atlas {
 		}
 	}
 
-	void Framebuffer::set_color_attachment(Texture2D &texture, uint32_t index)
+	void Framebuffer::set_color_attachment(const Texture2D &texture, uint32_t index)
 	{
 		CORE_ASSERT(m_Framebuffer, "Framebuffer::set_color_attachment: framebuffer was not initialized");
 		if (!is_color_attachment(texture.format())) {
@@ -231,10 +364,10 @@ namespace Atlas {
 		}
 
 		m_ColorTextures.insert_or_assign(index, texture);
-		m_Framebuffer->push_tex_attachment(color_format_to_gl_attachment(texture.format()) + index, texture.get_native());
+		m_Framebuffer->push_tex_attachment(color_format_to_gl_attachment(texture.format()) + index, texture.m_Texture->id());
 	}
 
-	void Framebuffer::set_depth_stencil_texture(Texture2D &texture)
+	void Framebuffer::set_depth_stencil_texture(const Texture2D &texture)
 	{
 		CORE_ASSERT(m_Framebuffer, "Framebuffer::set_depth_stencil_texture: framebuffer was not initialized");
 		if (is_color_attachment(texture.format())) {
@@ -243,7 +376,7 @@ namespace Atlas {
 		}
 
 		m_DepthStencilTexture = texture;
-		m_Framebuffer->push_tex_attachment(color_format_to_gl_attachment(texture.format()), texture.get_native());
+		m_Framebuffer->push_tex_attachment(color_format_to_gl_attachment(texture.format()), texture.m_Texture->id());
 	}
 
 	const Texture2D &Framebuffer::get_color_attachment(uint32_t index)
@@ -252,15 +385,24 @@ namespace Atlas {
 		return m_ColorTextures.at(index);
 	}
 
-	void Framebuffer::bind()
+	size_t Framebuffer::hash() const
 	{
-		CORE_ASSERT(m_Framebuffer, "Framebuffer::bind: framebuffer was not initialized");
-		m_Framebuffer->bind();
+		return std::hash<void *>()(m_Framebuffer.get());
+	}
+
+	void Framebuffer::bind(const Framebuffer &framebuffer)
+	{
+		CORE_ASSERT(framebuffer.is_init(), "Framebuffer::bind: framebuffer was not initialized");
+		if (GlobalBindingContext.framebuffer == framebuffer) return;
+
+		framebuffer.m_Framebuffer->bind();
+		GlobalBindingContext.framebuffer = framebuffer;
 	}
 
 	void Framebuffer::unbind()
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		GlobalBindingContext.framebuffer = Framebuffer();
 	}
 
 	Framebuffer Framebuffer::empty()
@@ -298,24 +440,60 @@ namespace Atlas {
 	{
 		CORE_ASSERT(buffer.is_init(), "bind_vertex_buffer: buffer was not initialized!");
 
-		if (buffer.type() | BufferType::VERTEX) {
+		if (!(buffer.type() | BufferType::VERTEX)) {
 			CORE_WARN("bind_vertex_buffer: buffer was not initialized as a vertex buffer");
 			return;
 		}
 
+		if (GlobalBindingContext.vertexBuffers.find(index) != GlobalBindingContext.vertexBuffers.end()) return;
+
 		gl_utils::bind_vertex_buffer(buffer.m_Buffer, buffer.m_Stride, index, 0);
+
+		GlobalBindingContext.vertexBuffers.insert_or_assign(index, buffer);
 	}
 
 	void Buffer::bind_index(const Buffer &buffer)
 	{
 		CORE_ASSERT(buffer.is_init(), "bind_vertex_buffer: buffer was not initialized!");
 
-		if (buffer.type() | BufferType::INDEX_U32) {
+		if (!(buffer.type() | BufferType::INDEX_U32)) {
 			CORE_WARN("bind_vertex_buffer: buffer was not initialized as a vertex buffer");
 			return;
 		}
 
+		if (GlobalBindingContext.indexBuffer == buffer) return;
+
 		gl_utils::bind_index_buffer(buffer.m_Buffer);
+
+		GlobalBindingContext.indexBuffer = buffer;
+	}
+
+	size_t Buffer::hash() const
+	{
+		return std::hash<void *>()(m_Buffer.get());
+	}
+
+	Buffer Buffer::uniform(void *data, size_t size, BufferUsage usage)
+	{
+		BufferCreateInfo info{};
+		info.size = size;
+		info.data = data;
+		info.types = BufferType::UNIFORM;
+		info.usage = usage;
+		info.stride = -1;
+
+		return Buffer(info);
+	}
+
+	Buffer Buffer::index(uint32_t *data, size_t count, BufferUsage usage) {
+		BufferCreateInfo info{};
+		info.size = sizeof(uint32_t) * count;
+		info.data = (void *)data;
+		info.types = BufferType::INDEX_U32;
+		info.usage = usage;
+		info.stride = sizeof(uint32_t);
+
+		return Buffer(info);
 	}
 
 	void Buffer::set_data(void *data, size_t size) {
@@ -324,7 +502,7 @@ namespace Atlas {
 		m_Buffer->set_data(data, size);
 	}
 
-	size_t Buffer::size()
+	size_t Buffer::size() const
 	{
 		CORE_ASSERT(m_Buffer, "Buffer::bind: buffer was not initialized!");
 		return m_Buffer->size();
@@ -349,10 +527,20 @@ namespace Atlas {
 		m_BufferIndx = index;
 	}
 
-	void VertexLayout::bind() const
+	void VertexLayout::bind(const VertexLayout &layout)
 	{
-		CORE_ASSERT(m_Layout, "VertexLayout::bind: buffer was not initialized!");
-		m_Layout->bind();
+		CORE_ASSERT(layout.is_init(), "VertexLayout::bind: buffer was not initialized!");
+
+		if (GlobalBindingContext.layout == layout) return;
+
+		layout.m_Layout->bind();
+
+		GlobalBindingContext.layout = layout;
+	}
+
+	size_t VertexLayout::hash() const
+	{
+		return std::hash<void *>()(m_Layout.get());
 	}
 
 	Shader::Shader(const ShaderCreateInfo &info)
@@ -371,8 +559,17 @@ namespace Atlas {
 	{
 		CORE_ASSERT(shader.is_init(), "Shader::bind: Shader was not initialized!");
 
-		shader.m_Layout.bind();
+		if (GlobalBindingContext.shader == shader) return;
+
+		for (auto &pair : shader.m_UniformBuffers) {
+			const Buffer &buff = pair.second;
+			gl_utils::bind_uniform_buffer(shader.m_Shader->get_block_binding(pair.first), pair.second.m_Buffer);
+		}
+
+		VertexLayout::bind(shader.m_Layout);
 		gl_utils::bind_shader(shader.m_Shader);
+
+		GlobalBindingContext.shader = shader;
 	}
 
 	void Shader::unbind()
@@ -389,106 +586,91 @@ namespace Atlas {
 		return Shader(info);
 	}
 
-	void Shader::set_int(const char *name, int32_t value)
-	{
-		CORE_ASSERT(m_Shader, "Shader::set_int: Shader was not initialized!");
-		m_Shader->set_int(name, value);
+#define IMPL_SHADER_FUNC(TYPE, FUNC_NAME) \
+	void Shader::set(const char *name, TYPE value) \
+	{ \
+		CORE_ASSERT(m_Shader, "Shader::set_int: Shader was not initialized!"); \
+		m_Shader->FUNC_NAME(name, value); \
 	}
 
-	void Shader::set_int2(const char *name, const glm::ivec2 &value)
+	IMPL_SHADER_FUNC(int32_t, set_int);
+	IMPL_SHADER_FUNC(const glm::ivec2 &, set_int2);
+	IMPL_SHADER_FUNC(const glm::ivec3 &, set_int3);
+	IMPL_SHADER_FUNC(const glm::ivec4 &, set_int4);
+
+	IMPL_SHADER_FUNC(uint32_t, set_int);
+	IMPL_SHADER_FUNC(const glm::uvec2 &, set_uint2);
+	IMPL_SHADER_FUNC(const glm::uvec3 &, set_uint3);
+	IMPL_SHADER_FUNC(const glm::uvec4 &, set_uint4);
+
+	IMPL_SHADER_FUNC(float, set_float);
+	IMPL_SHADER_FUNC(const glm::vec2 &, set_float2);
+	IMPL_SHADER_FUNC(const glm::vec3 &, set_float3);
+	IMPL_SHADER_FUNC(const glm::vec4 &, set_float4);
+
+	IMPL_SHADER_FUNC(const glm::mat3 &, set_mat3);
+	IMPL_SHADER_FUNC(const glm::mat4 &, set_mat4);
+
+	void Shader::set(const char *name, const Buffer &buffer)
 	{
-		CORE_ASSERT(m_Shader, "Shader::set_int2: Shader was not initialized!");
-		m_Shader->set_int2(name, value);
+		CORE_ASSERT(buffer.m_Types | BufferType::UNIFORM, "Shader::set: buffer was not initialized as unifrom buffer!");
+		m_UniformBuffers.insert_or_assign(name, buffer);
 	}
 
-	void Shader::set_int3(const char *name, const glm::ivec3 &value)
+	Buffer &Shader::get_uniform_buffer(const char *name)
 	{
-		CORE_ASSERT(m_Shader, "Shader::set_int3: Shader was not initialized!");
-		m_Shader->set_int3(name, value);
+		auto it = m_UniformBuffers.find(name);
+		CORE_ASSERT(it != m_UniformBuffers.end(), "Shader::get_uniform_buffer: could not find buffer: {}", name);
+
+		return m_UniformBuffers.at(name);
 	}
 
-	void Shader::set_int4(const char *name, const glm::ivec4 &value)
+	size_t Shader::hash() const
 	{
-		CORE_ASSERT(m_Shader, "Shader::set_int4: Shader was not initialized!");
-		m_Shader->set_int4(name, value);
+		return std::hash<void *>()(m_Shader.get());
 	}
 
-	void Shader::set_int_vec(const char *name, int32_t *data, size_t count)
+	bool operator==(const Texture2D &t1, const Texture2D &t2)
 	{
-		CORE_ASSERT(m_Shader, "Shader::set_int_vec: Shader was not initialized!");
-		m_Shader->set_int_vec(name, data, count);
+		return t1.m_Texture == t2.m_Texture;
+	}
+	bool operator!=(const Texture2D &t1, const Texture2D &t2)
+	{
+		return !(t1 == t2);
+	}
+	bool operator==(const Framebuffer &f1, const Framebuffer &f2)
+	{
+		return f1.m_Framebuffer == f2.m_Framebuffer;
+	}
+	bool operator!=(const Framebuffer &f1, const Framebuffer &f2)
+	{
+		return !(f1 == f2);
+	}
+	bool operator==(const Buffer &b1, const Buffer &b2)
+	{
+		return b1.m_Buffer == b2.m_Buffer;
+	}
+	bool operator!=(const Buffer &b1, const Buffer &b2)
+	{
+		return !(b1 == b2);
+	}
+	bool operator==(const VertexLayout &v1, const VertexLayout &v2)
+	{
+		return v1.m_Layout == v2.m_Layout;
 	}
 
-	void Shader::set_uint(const char *name, uint32_t value)
+	bool operator!=(const VertexLayout &v1, const VertexLayout &v2)
 	{
-		CORE_ASSERT(m_Shader, "Shader::set_uint: Shader was not initialized!");
-		m_Shader->set_uint(name, value);
+		return !(v1 == v2);
 	}
 
-	void Shader::set_uint2(const char *name, const glm::uvec2 &value)
+	bool operator==(const Shader &s1, const Shader &s2)
 	{
-		CORE_ASSERT(m_Shader, "Shader::set_uint2: Shader was not initialized!");
-		m_Shader->set_uint2(name, value);
+		return s1.m_Shader == s2.m_Shader;
 	}
 
-	void Shader::set_uint3(const char *name, const glm::uvec3 &value)
+	bool operator!=(const Shader &s1, const Shader &s2)
 	{
-		CORE_ASSERT(m_Shader, "Shader::set_uint3: Shader was not initialized!");
-		m_Shader->set_uint3(name, value);
-	}
-
-	void Shader::set_uint4(const char *name, const glm::uvec4 &value)
-	{
-		CORE_ASSERT(m_Shader, "Shader::set_uint4: Shader was not initialized!");
-		m_Shader->set_uint4(name, value);
-	}
-
-	void Shader::set_uint_vec(const char *name, uint32_t *data, size_t count)
-	{
-		CORE_ASSERT(m_Shader, "Shader::set_uint_vec: Shader was not initialized!");
-		m_Shader->set_uint_vec(name, data, count);
-	}
-
-	void Shader::set_float(const char *name, float value)
-	{
-		CORE_ASSERT(m_Shader, "Shader::set_float: Shader was not initialized!");
-		m_Shader->set_float(name, value);
-	}
-
-	void Shader::set_float2(const char *name, const glm::vec2 &value)
-	{
-		CORE_ASSERT(m_Shader, "Shader::set_float2: Shader was not initialized!");
-		m_Shader->set_float2(name, value);
-	}
-
-	void Shader::set_float3(const char *name, const glm::vec3 &value)
-	{
-		CORE_ASSERT(m_Shader, "Shader::set_float3: Shader was not initialized!");
-		m_Shader->set_float3(name, value);
-	}
-
-	void Shader::set_float4(const char *name, const glm::vec4 &value)
-	{
-		CORE_ASSERT(m_Shader, "Shader::set_float4: Shader was not initialized!");
-		m_Shader->set_float4(name, value);
-	}
-
-	void Shader::set_float_vec(const char *name, float *data, size_t count)
-	{
-		CORE_ASSERT(m_Shader, "Shader::set_float_vec: Shader was not initialized!");
-		m_Shader->set_float_vec(name, data, count);
-	}
-
-	void Shader::set_mat3(const char *name, const glm::mat3 &value)
-	{
-		CORE_ASSERT(m_Shader, "Shader::set_mat3: Shader was not initialized!");
-		m_Shader->set_mat3(name, value);
-	}
-
-	void Shader::set_mat4(const char *name, const glm::mat4 &value)
-	{
-		CORE_ASSERT(m_Shader, "Shader::set_mat4: Shader was not initialized!");
-		m_Shader->set_mat4(name, value);
+		return !(s1 == s2);
 	}
 }
-

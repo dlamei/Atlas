@@ -14,6 +14,7 @@ namespace gl_utils {
 }
 
 namespace Atlas {
+	class Color;
 	class Texture2D;
 	class Framebuffer;
 	class Buffer;
@@ -42,7 +43,7 @@ namespace Atlas {
 		inline uint8_t blue() const;
 		inline uint8_t alpha() const;
 
-		glm::vec4 normalized_vec();
+		glm::vec4 normalized();
 
 		explicit operator uint32_t() const;
 
@@ -51,6 +52,25 @@ namespace Atlas {
 	};
 
 	std::ostream &operator<<(std::ostream &os, const Color &c);
+}
+
+namespace RenderApi {
+
+	void frame_start();
+	void frame_end();
+
+	void begin(const Atlas::Texture2D &color, Atlas::Color clearColor = Atlas::Color(255));
+	void begin(const Atlas::Texture2D &color, const Atlas::Texture2D &depth, Atlas::Color clearColor = Atlas::Color(255));
+	void begin(const Atlas::Framebuffer &frameBuffer, Atlas::Color clearColor = Atlas::Color(255), bool clearDepth = false);
+	void end();
+
+	void draw_indexed(size_t indexCount);
+
+	void init();
+	void resize_viewport(uint32_t width, uint32_t height);
+}
+
+namespace Atlas {
 
 	enum class ColorFormat : uint32_t {
 		R8G8B8A8,
@@ -81,21 +101,29 @@ namespace Atlas {
 		static Texture2D color(uint32_t width, uint32_t height, TextureFilter filter = TextureFilter::LINEAR);
 		static std::optional<Texture2D> load(const char *filePath, TextureFilter filter = TextureFilter::LINEAR);
 
-		inline bool is_init() { return m_Texture != nullptr; }
-		inline ColorFormat format() { return m_Format; }
+		static void bind(const Texture2D &texture, uint32_t indx = 0);
 
-		void set_data(Color *data);
-		void bind(uint32_t indx = 0);
+		void set_data(Color *data) const;
 
-		uint32_t width();
-		uint32_t height();
-		bool has_mipmap();
-		uint32_t get_native() const;
+		uint32_t width() const;
+		uint32_t height() const;
+		bool has_mipmap() const;
+		inline ColorFormat format() const { return m_Format; }
+		inline bool is_init() const { return m_Texture != nullptr; }
 
+		friend bool operator==(const Texture2D &t1, const Texture2D &t2);
+		friend bool operator!=(const Texture2D &t1, const Texture2D &t2);
+
+		friend void ImGui::Image(const Atlas::Texture2D &texture, const ImVec2 &size,
+			const ImVec2 &uv0, const ImVec2 &uv1, const ImVec4 &tint_col, const ImVec4 &border_col);
+
+		size_t hash() const;
 
 	private:
 		ColorFormat m_Format{ 0 };
 		Ref<gl_utils::GLTexture2D> m_Texture{ nullptr };
+
+		friend class Framebuffer;
 	};
 
 
@@ -106,20 +134,26 @@ namespace Atlas {
 
 		Framebuffer() = default;
 		Framebuffer(std::vector<Attachment> colorAttachments);
+		//TODO: FramebufferCreateInfo
 
 		static Framebuffer empty();
 
-		void bind();
+		static void bind(const Framebuffer &framebuffer);
 		static void unbind();
-		void set_color_attachment(Texture2D &texture, uint32_t index);
-		void set_depth_stencil_texture(Texture2D &texture);
+		void set_color_attachment(const Texture2D &texture, uint32_t index);
+		void set_depth_stencil_texture(const Texture2D &texture);
 
 		const Texture2D &get_color_attachment(uint32_t index);
 
 		inline uint32_t width() { return m_Width; }
 		inline uint32_t height() { return m_Height; }
 
-		inline bool is_init() { return m_Framebuffer != nullptr; }
+		inline bool is_init() const { return m_Framebuffer != nullptr; }
+
+		friend bool operator==(const Framebuffer &f1, const Framebuffer &f2);
+		friend bool operator!=(const Framebuffer &f1, const Framebuffer &f2);
+
+		size_t hash() const;
 
 	private:
 		Ref<gl_utils::GLFramebuffer> m_Framebuffer{ nullptr };
@@ -174,30 +208,46 @@ namespace Atlas {
 			return Buffer(info);
 		}
 
-		static Buffer index(uint32_t *data, size_t count, BufferUsage usage = BufferUsage::STATIC_DRAW) {
+		template <typename T>
+		static Buffer uniform(const T &value, BufferUsage usage = BufferUsage::STATIC_DRAW) {
 			BufferCreateInfo info{};
-			info.size = sizeof(uint32_t) * count;
-			info.data = (void *)data;
-			info.types = BufferType::INDEX_U32;
+			info.size = sizeof(T);
+			info.data = (void *)&value;
+			info.types = BufferType::UNIFORM;
 			info.usage = usage;
-			info.stride = sizeof(uint32_t);
+			info.stride = sizeof(T);
 
 			return Buffer(info);
 		}
 
+		static Buffer uniform(void *data, size_t count, BufferUsage usage = BufferUsage::STATIC_DRAW);
+		static Buffer index(uint32_t *data, size_t count, BufferUsage usage = BufferUsage::STATIC_DRAW);
+
 		void set_data(void *data, size_t size);
 
-		size_t size();
+		template <typename T>
+		void set_data(const T &value) {
+			set_data((void *)value, sizeof(T));
+		}
+
+		size_t size() const;
 		inline BufferTypes type() const { return m_Types; }
 		inline bool is_init() const { return m_Buffer != nullptr; }
 
 		static void bind_vertex(const Buffer &buffer, uint32_t index = 0);
 		static void bind_index(const Buffer &buffer);
 
+		friend bool operator==(const Buffer &b1, const Buffer &b2);
+		friend bool operator!=(const Buffer &b1, const Buffer &b2);
+
+		size_t hash() const;
+
 	private:
 		Ref<gl_utils::GLBuffer> m_Buffer{ nullptr };
 		BufferTypes m_Types;
 		size_t m_Stride;
+
+		friend class Shader;
 	};
 
 	enum class VertexAttribute : uint32_t {
@@ -268,7 +318,8 @@ namespace Atlas {
 		void push(uint32_t count, uint32_t gl_type, uint32_t offset);
 		void set_index(uint32_t index);
 
-		void bind() const;
+		//void bind() const;
+		static void bind(const VertexLayout &layout);
 
 		template <typename T, typename U>
 		void push(VertexAttribute attribute, U T:: *member) {
@@ -289,7 +340,12 @@ namespace Atlas {
 			push(glVal.second, glVal.first, (uint32_t)offset_of(member));
 		}
 
-		inline bool is_init() { return m_Layout != nullptr; }
+		inline bool is_init() const { return m_Layout != nullptr; }
+
+		friend bool operator==(const VertexLayout &v1, const VertexLayout &v2);
+		friend bool operator!=(const VertexLayout &v1, const VertexLayout &v2);
+
+		size_t hash() const;
 
 	private:
 		Ref<gl_utils::GLVertexLayout> m_Layout;
@@ -325,29 +381,43 @@ namespace Atlas {
 
 		inline bool is_init() const { return m_Shader != nullptr; }
 
-		void set_int(const char *name, int32_t value);
-		void set_int2(const char *name, const glm::ivec2 &value);
-		void set_int3(const char *name, const glm::ivec3 &value);
-		void set_int4(const char *name, const glm::ivec4 &value);
-		void set_int_vec(const char *name, int32_t *data, size_t count);
+		template <typename T>
+		void set(const char *name, T value)
+		{
+			CORE_ASSERT(false, "Shader::set not defined for this type");
+		}
 
-		void set_uint(const char *name, uint32_t value);
-		void set_uint2(const char *name, const glm::uvec2 &value);
-		void set_uint3(const char *name, const glm::uvec3 &value);
-		void set_uint4(const char *name, const glm::uvec4 &value);
-		void set_uint_vec(const char *name, uint32_t *data, size_t count);
+		void set(const char *name, int32_t value);
+		void set(const char *name, const glm::ivec2 &value);
+		void set(const char *name, const glm::ivec3 &value);
+		void set(const char *name, const glm::ivec4 &value);
 
-		void set_float(const char *name, float value);
-		void set_float2(const char *name, const glm::vec2 &value);
-		void set_float3(const char *name, const glm::vec3 &value);
-		void set_float4(const char *name, const glm::vec4 &value);
-		void set_float_vec(const char *name, float *data, size_t count);
+		void set(const char *name, uint32_t value);
+		void set(const char *name, const glm::uvec2 &value);
+		void set(const char *name, const glm::uvec3 &value);
+		void set(const char *name, const glm::uvec4 &value);
 
-		void set_mat3(const char *name, const glm::mat3 &value);
-		void set_mat4(const char *name, const glm::mat4 &value);
+		void set(const char *name, float value);
+		void set(const char *name, const glm::vec2 &value);
+		void set(const char *name, const glm::vec3 &value);
+		void set(const char *name, const glm::vec4 &value);
+
+		void set(const char *name, const glm::mat3 &value);
+		void set(const char *name, const glm::mat4 &value);
+
+		void set(const char *name, const Buffer &buffer);
+
+		Buffer &get_uniform_buffer(const char *name);
+
+		friend bool operator==(const Shader &s1, const Shader &s2);
+		friend bool operator!=(const Shader &s1, const Shader &s2);
+
+		size_t hash() const;
 
 	private:
 		Ref<gl_utils::GLShader> m_Shader;
+		std::unordered_map<std::string, Buffer> m_UniformBuffers;
+
 		VertexLayout m_Layout;
 	};
 }

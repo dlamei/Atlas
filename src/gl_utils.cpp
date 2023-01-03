@@ -5,8 +5,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <stb_image.h>
-
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_glfw.h>
@@ -72,45 +70,6 @@ namespace gl_utils {
 		}
 
 		glTextureSubImage2D(texture, 0, 0, 0, width, height, dataFormat, GL_UNSIGNED_BYTE, data);
-	}
-
-	bool load_texture2D(const char *filePath, uint32_t *texture) {
-		int width, height, channels;
-
-		stbi_set_flip_vertically_on_load(true);
-
-		stbi_uc *data = nullptr;
-		data = stbi_load(filePath, &width, &height, &channels, 0);
-
-		if (!data || stbi_failure_reason()) {
-			CORE_WARN("Failed to load image: {}", filePath);
-			CORE_WARN("{}", stbi_failure_reason());
-			return false;
-		}
-
-		GLenum internalFormat = 0;
-		GLenum dataFormat = 0;
-
-		if (channels == 4)
-		{
-			internalFormat = GL_RGBA8;
-			dataFormat = GL_RGBA;
-		}
-		else if (channels == 3)
-		{
-			internalFormat = GL_RGB8;
-			dataFormat = GL_RGB;
-		}
-
-		uint32_t tex{};
-		create_texture2D(width, height, internalFormat, true, &tex);
-		set_texture2D_data(tex, width, height, dataFormat, data);
-
-		stbi_image_free(data);
-
-		*texture = tex;
-
-		return true;
 	}
 
 	bool load_shader_module(const char *filePath, GLenum shaderType, uint32_t *shaderID) {
@@ -274,50 +233,6 @@ namespace gl_utils {
 		glBindTexture(GL_TEXTURE_2D, m_ID);
 	}
 
-	Ref<GLTexture2D> load_texture2D(const char *filePath) {
-		int width, height, channels;
-
-		stbi_set_flip_vertically_on_load(true);
-
-		stbi_uc *data = nullptr;
-		data = stbi_load(filePath, &width, &height, &channels, 0);
-
-		if (!data || stbi_failure_reason()) {
-			CORE_WARN("Failed to load image: {}", filePath);
-			CORE_WARN("{}", stbi_failure_reason());
-			return nullptr;
-		}
-
-		GLenum internalFormat = 0;
-		GLenum dataFormat = 0;
-
-		if (channels == 4)
-		{
-			internalFormat = GL_RGBA8;
-			dataFormat = GL_RGBA;
-		}
-		else if (channels == 3)
-		{
-			internalFormat = GL_RGB8;
-			dataFormat = GL_RGB;
-		}
-
-		GLTexture2DCreateInfo info{};
-		info.format = internalFormat;
-		info.height = height;
-		info.width = width;
-		info.mipmap = true;
-		info.minFilter = GL_LINEAR_MIPMAP_LINEAR;
-		info.magFilter = GL_LINEAR;
-
-		Ref<GLTexture2D> tex = make_ref<GLTexture2D>(info);
-		tex->set_data(data, dataFormat);
-
-		stbi_image_free(data);
-
-		return tex;
-	}
-
 	GLBuffer::GLBuffer(const GLBufferCreateInfo &info)
 		:m_Size(info.size)
 	{
@@ -349,6 +264,11 @@ namespace gl_utils {
 	GLBuffer::~GLBuffer()
 	{
 		glDeleteBuffers(1, &m_ID);
+	}
+
+	void bind_uniform_buffer(uint32_t blockBinding, const Ref<GLBuffer> &buffer, uint32_t offset)
+	{
+		glBindBufferRange(GL_UNIFORM_BUFFER, blockBinding, buffer->id(), offset, buffer->size());
 	}
 
 	void bind_shader(Ref<GLShader> shader)
@@ -442,11 +362,6 @@ namespace gl_utils {
 	{
 		glDeleteProgram(m_ID);
 	}
-
-	//void GLShader::bind()
-	//{
-	//	glUseProgram(m_ID);
-	//}
 
 	void GLShader::set_int(const char *name, int32_t value)
 	{
@@ -625,28 +540,6 @@ namespace gl_utils {
 		}
 	}
 
-	bool load_shader(const char *vertexFilePath, const char *fragmentFilePath, uint32_t *shader) {
-		bool res = false;
-
-		uint32_t modules[2]{};
-		res = load_shader_module("assets/shaders/default.vert", GL_VERTEX_SHADER, &modules[0]);
-		if (!res) return false;
-
-		uint32_t fragShaderID{};
-		res = load_shader_module("assets/shaders/default.frag", GL_FRAGMENT_SHADER, &modules[1]);
-		if (!res) return false;
-
-		uint32_t id{};
-		res = link_shader_modules(modules, 2, &id);
-		if (!res) return false;
-
-		glDeleteShader(modules[0]);
-		glDeleteShader(modules[1]);
-
-		*shader = id;
-		return true;
-	}
-
 	void init_opengl()
 	{
 		glEnable(GL_BLEND);
@@ -661,119 +554,4 @@ namespace gl_utils {
 		CORE_TRACE(" renderer:	{}", (const char *)glGetString(GL_RENDERER));
 		CORE_TRACE(" version:	{}\n", (const char *)glGetString(GL_VERSION));
 	}
-
-	Ref<GLVertexLayout> VAO;
-	Ref<GLBuffer> VBO, IBO, cameraBuffer;
-	Ref<GLShader> shader;
-	Ref<GLTexture2D> texture;
-	//Ref<GLRenderbuffer> depthBuffer;
-
-	void init() {
-
-		Vertex vertices[] =
-		{
-			{{0, 0, 0}, {0, 0}},
-			{{0, 1, 0}, {0, 1}},
-			{{1, 1, 0}, {1, 1}},
-			{{1, 0, 0}, {1, 0}},
-		};
-
-		uint32_t indices[] =
-		{
-			0, 1, 2,
-			0, 2, 3
-		};
-
-		{
-			GLBufferCreateInfo info{};
-			info.size = sizeof(vertices);
-			info.data = { (void *)vertices, sizeof(vertices) };
-			info.usage = GL_STATIC_DRAW;
-			VBO = make_ref<GLBuffer>(info);
-		}
-
-		{
-			GLBufferCreateInfo info{};
-			info.size = sizeof(indices);
-			info.data = { (void *)indices, sizeof(indices) };
-			info.usage = GL_STATIC_DRAW;
-			IBO = make_ref<GLBuffer>(info);
-		}
-
-		VAO = make_ref<GLVertexLayout>();
-		VAO->push_attrib(3, GL_FLOAT, offsetof(Vertex, Vertex::pos));
-		VAO->push_attrib(2, GL_FLOAT, offsetof(Vertex, Vertex::uv));
-
-		{
-			GLShaderCreateInfo info = {
-				{"assets/shaders/default.vert", GL_VERTEX_SHADER},
-				{"assets/shaders/default.frag", GL_FRAGMENT_SHADER}
-			};
-			shader = make_ref<GLShader>(info);
-			shader->set_int("tex", 0);
-
-			glm::mat4 camera = glm::ortho(-1, 1, -1, 1);
-
-
-			{
-				GLBufferCreateInfo info{};
-				info.size = sizeof(glm::mat4);
-				info.data = { &camera, sizeof(glm::mat4) };
-				info.usage = GL_STATIC_DRAW;
-				cameraBuffer = make_ref<GLBuffer>(info);
-			}
-
-			glBindBufferRange(GL_UNIFORM_BUFFER, shader->get_block_binding("CameraBuffer"), cameraBuffer->id(), 0, sizeof(glm::mat4));
-		}
-
-		texture = load_texture2D("assets/images/uv_checker.png");
-
-		//{
-		//	GLRenderbufferCreateInfo info{};
-		//	info.width = 900;
-		//	info.height = 900;
-		//	info.format = GL_DEPTH24_STENCIL8;
-		//	depthBuffer = make_ref<GLRenderbuffer>(info);
-		//}
-
-		//FBO = make_ref<GLFramebuffer>();
-		//FBO->push_tex_attachment(GL_COLOR_ATTACHMENT0, colorBuffer->id());
-		//FBO->push_rbo_attachment(GL_DEPTH_STENCIL_ATTACHMENT, depthBuffer->id());
-	}
-
-	void update() {
-
-		//FBO->bind();
-		//glViewport(0, 0, colorBuffer->width(), colorBuffer->height());
-
-		//ImGui::ShowDemoWindow();
-
-		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		texture->bind();
-
-		//bind_shader(shader);
-		//VAO->bind();
-
-		bind_vertex_buffer(VBO, sizeof(Vertex));
-		bind_index_buffer(IBO);
-
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		//ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		//ImGui::Begin("Viewport");
-		//ImGui::PopStyleVar();
-		//ImGui::BeginChild("Viewport");
-
-		//ImVec2 wSize = ImGui::GetWindowSize();
-		//ImGui::Image((void *)colorBuffer->id(), wSize, { 0, 1 }, { 1, 0 });
-
-		//ImGui::EndChild();
-		//ImGui::End();
-
-	}
-
 }

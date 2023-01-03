@@ -2,6 +2,8 @@
 #include "event.h"
 #include "atl_types.h"
 
+#include "camera.h"
+
 namespace Atlas {
 	class Window;
 
@@ -41,6 +43,9 @@ namespace Atlas {
 		~Application();
 
 		void run();
+		void update();
+
+		static void update_frame();
 
 		static Window &get_window();
 		static Application *get_instance();
@@ -53,9 +58,6 @@ namespace Atlas {
 		void queue_event(Event event);
 
 		static glm::vec2 &get_viewport_size();
-
-		//Texture2D get_viewport_color_texture();
-		//static Ref<Texture> get_viewport_depth_texture();
 
 	private:
 		void on_event(Event &event);
@@ -74,8 +76,13 @@ namespace Atlas {
 
 		std::vector<Event> m_QueuedEvents;
 
-		Framebuffer m_Framebuffer;
+		Texture2D m_ColorBuffer;
 		Shader m_Shader;
+		Buffer m_VertexBuffer;
+		Buffer m_IndexBuffer;
+		Texture2D m_Texture;
+
+		OrthographicCameraController m_CameraController;
 
 		glm::vec2 m_ViewportSize;
 
