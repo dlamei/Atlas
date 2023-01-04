@@ -52,25 +52,26 @@ namespace Atlas {
 	};
 
 	std::ostream &operator<<(std::ostream &os, const Color &c);
-}
 
-namespace RenderApi {
+	namespace RenderApi {
 
-	void frame_start();
-	void frame_end();
+		void frame_start();
+		void frame_end();
 
-	void begin(const Atlas::Texture2D &color, Atlas::Color clearColor = Atlas::Color(255));
-	void begin(const Atlas::Texture2D &color, const Atlas::Texture2D &depth, Atlas::Color clearColor = Atlas::Color(255));
-	void begin(const Atlas::Framebuffer &frameBuffer, Atlas::Color clearColor = Atlas::Color(255), bool clearDepth = false);
-	void end();
+		void enable_clear_color(bool b);
+		void enable_clear_depth(bool b);
+		void clear_color(Atlas::Color c);
 
-	void draw_indexed(size_t indexCount);
+		void begin(const Atlas::Texture2D &color);
+		void begin(const Atlas::Texture2D &color, const Atlas::Texture2D &depth);
+		void begin(const Atlas::Framebuffer &frameBuffer);
+		void end();
 
-	void init();
-	void resize_viewport(uint32_t width, uint32_t height);
-}
+		void draw_indexed(size_t indexCount);
 
-namespace Atlas {
+		void init();
+		void resize_viewport(uint32_t width, uint32_t height);
+	}
 
 	enum class ColorFormat : uint32_t {
 		R8G8B8A8,
@@ -99,6 +100,8 @@ namespace Atlas {
 		Texture2D(const Texture2DCreateInfo &info);
 
 		static Texture2D color(uint32_t width, uint32_t height, TextureFilter filter = TextureFilter::LINEAR);
+		static Texture2D depth(uint32_t width, uint32_t height, TextureFilter filter = TextureFilter::LINEAR);
+		static Texture2D depth_stencil(uint32_t width, uint32_t height, TextureFilter filter = TextureFilter::LINEAR);
 		static std::optional<Texture2D> load(const char *filePath, TextureFilter filter = TextureFilter::LINEAR);
 
 		static void bind(const Texture2D &texture, uint32_t indx = 0);
@@ -119,6 +122,7 @@ namespace Atlas {
 
 		size_t hash() const;
 
+
 	private:
 		ColorFormat m_Format{ 0 };
 		Ref<gl_utils::GLTexture2D> m_Texture{ nullptr };
@@ -126,14 +130,19 @@ namespace Atlas {
 		friend class Framebuffer;
 	};
 
+	using FramebufferAttachment = Texture2D;
+
+	struct FramebufferCreateInfo {
+		std::vector<FramebufferAttachment> colorAttachments;
+		FramebufferAttachment depthAttachments;
+	};
 
 	class Framebuffer {
 	public:
 
-		using Attachment = Texture2D;
 
 		Framebuffer() = default;
-		Framebuffer(std::vector<Attachment> colorAttachments);
+		Framebuffer(const FramebufferCreateInfo &info);
 		//TODO: FramebufferCreateInfo
 
 		static Framebuffer empty();
@@ -175,6 +184,7 @@ namespace Atlas {
 			VERTEX = BIT(0),
 			INDEX_U32 = BIT(1),
 			UNIFORM = BIT(2),
+			STORAGE = BIT(3),
 		};
 	}
 	using BufferTypes = uint32_t;
@@ -220,14 +230,28 @@ namespace Atlas {
 			return Buffer(info);
 		}
 
-		static Buffer uniform(void *data, size_t count, BufferUsage usage = BufferUsage::STATIC_DRAW);
+		template <typename T>
+		static Buffer storage(const T &value, BufferUsage usage = BufferUsage::STATIC_DRAW) {
+			info.size = sizeof(T);
+			info.data = (void *)&value;
+			info.types = BufferType::STORAGE;
+			info.usage = usage;
+			info.stride = sizeof(T);
+
+			return Buffer(info);
+		}
+
+		static Buffer create(BufferTypes types, void *data, size_t size, BufferUsage usage = BufferUsage::STATIC_DRAW, size_t stride = 0);
+
+		static Buffer uniform(void *data, size_t size, BufferUsage usage = BufferUsage::STATIC_DRAW);
+		static Buffer storage(void *data, size_t size, BufferUsage usage = BufferUsage::STATIC_DRAW);
 		static Buffer index(uint32_t *data, size_t count, BufferUsage usage = BufferUsage::STATIC_DRAW);
 
 		void set_data(void *data, size_t size);
 
 		template <typename T>
 		void set_data(const T &value) {
-			set_data((void *)value, sizeof(T));
+			set_data((void *)&value, sizeof(T));
 		}
 
 		size_t size() const;
@@ -236,6 +260,7 @@ namespace Atlas {
 
 		static void bind_vertex(const Buffer &buffer, uint32_t index = 0);
 		static void bind_index(const Buffer &buffer);
+		static void bind_storage(const Buffer &buffer);
 
 		friend bool operator==(const Buffer &b1, const Buffer &b2);
 		friend bool operator!=(const Buffer &b1, const Buffer &b2);
@@ -292,8 +317,6 @@ namespace Atlas {
 	DEFINE_ATTRIBUTE_TRAIT(glm::vec3, FLOAT3);
 	DEFINE_ATTRIBUTE_TRAIT(glm::vec4, FLOAT4);
 
-	std::pair<uint32_t, uint32_t> vertex_attrib_to_gl_enum(VertexAttribute a); //enum, count
-
 	class VertexLayout {
 	public:
 
@@ -315,7 +338,8 @@ namespace Atlas {
 			return layout;
 		}
 
-		void push(uint32_t count, uint32_t gl_type, uint32_t offset);
+		//void push(uint32_t count, VertexAttribute gl_type, uint32_t offset);
+		void push(VertexAttribute attribute, uint32_t offset);
 		void set_index(uint32_t index);
 
 		//void bind() const;
@@ -323,8 +347,7 @@ namespace Atlas {
 
 		template <typename T, typename U>
 		void push(VertexAttribute attribute, U T:: *member) {
-			auto glVal = vertex_attrib_to_gl_enum(attribute);
-			push(glVal.second, glVal.first, (uint32_t)offset_of(member));
+			push(attribute, (uint32_t)offset_of(member));
 		}
 
 		template <typename T, typename U>
@@ -336,8 +359,7 @@ namespace Atlas {
 			}
 
 			VertexAttribute attribute = vertex_attribute<U>::attribute;
-			auto glVal = vertex_attrib_to_gl_enum(attribute);
-			push(glVal.second, glVal.first, (uint32_t)offset_of(member));
+			push(attribute, (uint32_t)offset_of(member));
 		}
 
 		inline bool is_init() const { return m_Layout != nullptr; }

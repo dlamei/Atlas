@@ -276,12 +276,17 @@ namespace gl_utils {
 		glUseProgram(shader->id());
 	}
 
-	void bind_vertex_buffer(Ref<GLBuffer> GLBuffer, size_t stride, uint32_t indx, uint32_t offset) {
+	void bind_vertex_buffer(const Ref<GLBuffer> &GLBuffer, size_t stride, uint32_t indx, uint32_t offset) {
 		glBindVertexBuffer(indx, GLBuffer->id(), offset, (GLsizei)stride);
 	}
 
-	void bind_index_buffer(Ref<GLBuffer> buffer) {
+	void bind_index_buffer(const Ref<GLBuffer> &buffer) {
 		glBindBuffer(GL_INDEX_BUFFER, buffer->id());
+	}
+
+	void bind_storage(const Ref<GLBuffer> &buffer)
+	{
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer->id());
 	}
 
 	GLRenderbuffer::GLRenderbuffer(GLRenderbufferCreateInfo &info)

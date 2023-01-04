@@ -96,3 +96,26 @@ GLenum shader_type_to_gl_enum(Atlas::ShaderType type) {
 	CORE_ASSERT(false, "shader_type_to_gl_enum: shader type {} not defined", (uint32_t)type);
 	return 0;
 }
+
+std::pair<uint32_t, uint32_t> vertex_attrib_to_gl_enum(Atlas::VertexAttribute a)
+{
+	switch (a)
+	{
+	case Atlas::VertexAttribute::INT:		return { GL_INT, 1 };
+	case Atlas::VertexAttribute::INT2:		return { GL_INT, 2 };
+	case Atlas::VertexAttribute::INT3:		return { GL_INT, 3 };
+	case Atlas::VertexAttribute::INT4:		return { GL_INT, 4 };
+	case Atlas::VertexAttribute::UINT:		return { GL_UNSIGNED_INT, 1 };
+	case Atlas::VertexAttribute::UINT2:		return { GL_UNSIGNED_INT, 2 };
+	case Atlas::VertexAttribute::UINT3:		return { GL_UNSIGNED_INT, 3 };
+	case Atlas::VertexAttribute::UINT4:		return { GL_UNSIGNED_INT, 4 };
+	case Atlas::VertexAttribute::FLOAT:		return { GL_FLOAT, 1 };
+	case Atlas::VertexAttribute::FLOAT2:	return { GL_FLOAT, 2 };
+	case Atlas::VertexAttribute::FLOAT3:	return { GL_FLOAT, 3 };
+	case Atlas::VertexAttribute::FLOAT4:	return { GL_FLOAT, 4 };
+	}
+
+	CORE_ASSERT(false, "vertex_attrib_to_gl_enum: enum not defined!");
+	return { 0, 0 };
+}
+

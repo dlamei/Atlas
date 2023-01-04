@@ -33,7 +33,8 @@ namespace Atlas {
 		m_ImGuiLayer = make_ref<ImGuiLayer>();
 		push_layer(m_ImGuiLayer);
 
-		m_ColorBuffer = Texture2D::color((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y, TextureFilter::NEAREST);
+		m_ColorBuffer = Texture2D::color((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+		m_DepthBuffer = Texture2D::depth((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 
 		m_Texture = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
 
@@ -42,9 +43,8 @@ namespace Atlas {
 			m_Shader = Shader::load("assets/shaders/default.vert", "assets/shaders/default.frag", layout);
 			m_Shader.set("tex", 0);
 
-			Buffer cameraBuffer = Buffer::uniform((glm::mat4)glm::ortho(-1, 1, -1, 1), BufferUsage::DYNAMIC_DRAW);
+			Buffer cameraBuffer = Buffer::uniform(glm::ortho(-1, 1, -1, 1), BufferUsage::DYNAMIC_DRAW);
 			m_Shader.set("CameraBuffer", cameraBuffer);
-
 		}
 
 		{
@@ -64,8 +64,13 @@ namespace Atlas {
 
 			m_VertexBuffer = Buffer::vertex(vertices, 4);
 			m_IndexBuffer = Buffer::index(indices, 6);
-
 		}
+
+		//RenderApi::enable_clear_color(false);
+		//RenderApi::enable_clear_depth(false);
+		RenderApi::clear_color({ 60, 5, 45 });
+
+		m_CameraController.set_position({ 0, 0, 3 });
 	}
 
 	Application::~Application()
@@ -99,7 +104,6 @@ namespace Atlas {
 
 	void Application::update()
 	{
-
 		float time = (float)m_Window->get_time();
 		Timestep timestep = time - m_LastFrameTime;
 		m_LastFrameTime = time;
@@ -114,9 +118,9 @@ namespace Atlas {
 		for (auto &layer : m_LayerStack) layer->on_imgui();
 
 		m_Shader.get_uniform_buffer("CameraBuffer")
-			.set_data(&m_CameraController.get_camera().get_view_projection());
+			.set_data(m_CameraController.get_camera().get_view_projection());
 
-		RenderApi::begin(m_ColorBuffer, { 60, 5, 45 });
+		RenderApi::begin(m_ColorBuffer, m_DepthBuffer);
 
 		Shader::bind(m_Shader);
 		Texture2D::bind(m_Texture);
@@ -241,7 +245,8 @@ namespace Atlas {
 
 		if (e.width == 0 || e.height == 0) return false;
 
-		m_ColorBuffer = Texture2D::color(e.width, e.height);
+		m_ColorBuffer = Texture2D::color(e.width, e.height, TextureFilter::NEAREST);
+		m_DepthBuffer = Texture2D::depth(e.width, e.height, TextureFilter::NEAREST);
 
 		return false;
 	}

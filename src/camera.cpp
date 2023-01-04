@@ -110,6 +110,17 @@ namespace Atlas {
 		dispatcher.dispatch<MouseScrolledEvent>(BIND_EVENT_FN(OrthographicCameraController::on_mouse_scrolled));
 	}
 
+	void OrthographicCameraController::set_position(const glm::vec3 &pos)
+	{
+		m_Camera.set_position(pos);
+		m_CameraPosition = pos;
+	}
+
+	const glm::vec3 &OrthographicCameraController::get_position()
+	{
+		return m_Camera.get_position();
+	}
+
 	void PerspectiveCamera::recalculate_view()
 	{
 		m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_Front, m_Up);
@@ -262,6 +273,17 @@ namespace Atlas {
 		dispatcher.dispatch<MouseMovedEvent>(BIND_EVENT_FN(PerspectiveCameraController::on_mouse_moved))
 			.dispatch<MouseButtonPressedEvent>(BIND_EVENT_FN(PerspectiveCameraController::on_mouse_pressed))
 			.dispatch<MouseButtonReleasedEvent>(BIND_EVENT_FN(PerspectiveCameraController::on_mouse_released));
+	}
+
+	void PerspectiveCameraController::set_position(const glm::vec3 &pos)
+	{
+		m_CameraPosition = pos;
+		m_Camera.set_position(pos);
+	}
+
+	const glm::vec3 &PerspectiveCameraController::get_position()
+	{
+		return m_Camera.get_position();
 	}
 
 }

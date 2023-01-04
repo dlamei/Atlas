@@ -11,124 +11,148 @@ void ImGui::Image(const Atlas::Texture2D &texture, const ImVec2 &size, const ImV
 	ImGui::Image(reinterpret_cast<void *>(ptr), size, uv0, uv1, tint_col, border_col);
 }
 
-namespace RenderApi {
-
-	struct CachedFramebuffer {
-		Atlas::Framebuffer framebuffer;
-		bool used{ false };
-	};
-
-	struct RenderContext {
-		std::unordered_map<size_t, CachedFramebuffer> framebuffers;
-	};
-
-	static RenderContext GlobalRenderContext{};
-
-	void begin(const Atlas::Texture2D &color, Atlas::Color clearColor) {
-
-		size_t hash = color.hash();
-
-		if (GlobalRenderContext.framebuffers.find(hash) != GlobalRenderContext.framebuffers.end()) {
-			auto it = GlobalRenderContext.framebuffers.find(hash);
-			begin(it->second.framebuffer, clearColor);
-			it->second.used = true;
-			return;
-		}
-
-		Atlas::Framebuffer framebuffer = Atlas::Framebuffer::empty();
-		framebuffer.set_color_attachment(color, 0);
-
-		CachedFramebuffer fb{};
-		fb.used = true;
-		fb.framebuffer = framebuffer;
-
-		GlobalRenderContext.framebuffers.insert({ hash, fb });
-		begin(framebuffer, clearColor);
-	}
-
-	void begin(const Atlas::Texture2D &color, const Atlas::Texture2D &depth, Atlas::Color clearColor)
-	{
-		size_t hash = color.hash();
-		hash ^= depth.hash();
-
-		if (GlobalRenderContext.framebuffers.find(hash) != GlobalRenderContext.framebuffers.end()) {
-			auto it = GlobalRenderContext.framebuffers.find(hash);
-			begin(it->second.framebuffer, clearColor);
-			it->second.used = true;
-			return;
-		}
-
-		Atlas::Framebuffer framebuffer = Atlas::Framebuffer::empty();
-		framebuffer.set_color_attachment(color, 0);
-		framebuffer.set_depth_stencil_texture(depth);
-
-		CachedFramebuffer fb{};
-		fb.used = true;
-		fb.framebuffer = framebuffer;
-
-		GlobalRenderContext.framebuffers.insert({ hash, fb });
-		begin(framebuffer, clearColor);
-	}
-
-	void frame_start()
-	{
-		for (auto &it : GlobalRenderContext.framebuffers) {
-			it.second.used = false;
-		}
-	}
-
-	void frame_end()
-	{
-		auto &framebuffers = GlobalRenderContext.framebuffers;
-
-		//TODO: maybe only delete when not used for multiple frames
-		for (auto it = framebuffers.begin(); it != framebuffers.end();) {
-			if (!it->second.used) it = framebuffers.erase(it);
-			else it++;
-		}
-
-	}
-
-	void begin(const Atlas::Framebuffer &frameBuffer, Atlas::Color clearColor, bool clearDepth)
-	{
-		glm::vec4 col = clearColor.normalized();
-
-		Atlas::Framebuffer::bind(frameBuffer);
-
-		glClearColor(col.r, col.g, col.b, col.a);
-		glClear((clearColor.alpha() ? GL_COLOR_BUFFER_BIT : 0) | (clearDepth ? GL_DEPTH_BUFFER_BIT : 0));
-		//if (clearColor.alpha() || clearDepth) {
-		//}
-	}
-
-	void end()
-	{
-		Atlas::Framebuffer::unbind();
-	}
-
-	void draw_indexed(size_t indexCount)
-	{
-		glDrawElements(GL_TRIANGLES, (int)indexCount, GL_UNSIGNED_INT, 0);
-	}
-
-	void init()
-	{
-		gl_utils::init_opengl();
-	}
-
-	void resize_viewport(uint32_t width, uint32_t height)
-	{
-		gl_utils::resize_viewport(width, height);
-	}
-}
-
 namespace Atlas {
 
+	namespace RenderApi {
+
+		struct CachedFramebuffer {
+			Framebuffer framebuffer;
+			bool used{ false };
+		};
+
+		struct RenderContext {
+			std::unordered_map<size_t, CachedFramebuffer> framebuffers;
+			bool clearColorBuffer{ true };
+			bool clearDepthBuffer{ true };
+			glm::vec4 clearColor{ 0, 0, 0, 0 };
+		};
+
+		static RenderContext GlobalRenderContext{};
+
+		size_t framebuffer_create_hash(const FramebufferCreateInfo &info) {
+			size_t hash = 0;
+
+			for (const auto &col : info.colorAttachments) {
+				if (col.is_init()) {
+					hash ^= col.hash();
+				}
+			}
+
+			if (info.depthAttachments.is_init()) hash ^= info.depthAttachments.hash();
+
+			return hash;
+		}
+
+		Framebuffer get_framebuffer(const FramebufferCreateInfo &info) {
+
+			size_t hash = framebuffer_create_hash(info);
+
+			if (GlobalRenderContext.framebuffers.find(hash) != GlobalRenderContext.framebuffers.end()) {
+				auto it = GlobalRenderContext.framebuffers.find(hash);
+				it->second.used = true;
+				return it->second.framebuffer;
+			}
+
+			Framebuffer fb{ info };
+			CachedFramebuffer cFb{};
+			cFb.framebuffer = fb;
+			cFb.used = true;
+
+			GlobalRenderContext.framebuffers.insert({ hash, cFb });
+
+			return fb;
+		}
+
+		void begin(const Texture2D &color) {
+
+			FramebufferCreateInfo fbInfo{};
+			fbInfo.depthAttachments = { color };
+
+			Framebuffer fb = get_framebuffer(fbInfo);
+			begin(fb);
+		}
+
+		void begin(const Texture2D &color, const Texture2D &depth)
+		{
+			FramebufferCreateInfo fbInfo{};
+			fbInfo.colorAttachments = { color };
+			fbInfo.depthAttachments = depth;
+
+			Framebuffer fb = get_framebuffer(fbInfo);
+			begin(fb);
+		}
+
+		void begin(const Framebuffer &frameBuffer)
+		{
+			glm::vec4 col = GlobalRenderContext.clearColor;
+
+			Framebuffer::bind(frameBuffer);
+
+			glClearColor(col.r, col.g, col.b, col.a);
+			glClear(GlobalRenderContext.clearColorBuffer ? GL_COLOR_BUFFER_BIT : 0 || GlobalRenderContext.clearDepthBuffer ? GL_DEPTH_BUFFER_BIT : 0);
+		}
+
+		void frame_start()
+		{
+			for (auto &it : GlobalRenderContext.framebuffers) {
+				it.second.used = false;
+			}
+		}
+
+		void frame_end()
+		{
+			auto &framebuffers = GlobalRenderContext.framebuffers;
+
+			//TODO: maybe only delete when not used for multiple frames
+			for (auto it = framebuffers.begin(); it != framebuffers.end();) {
+				if (!it->second.used) it = framebuffers.erase(it);
+				else it++;
+			}
+
+		}
+
+		void enable_clear_color(bool b)
+		{
+			GlobalRenderContext.clearColorBuffer = b;
+		}
+
+		void enable_clear_depth(bool b)
+		{
+			GlobalRenderContext.clearDepthBuffer = b;
+		}
+
+		void clear_color(Color c)
+		{
+			GlobalRenderContext.clearColor = c.normalized();
+		}
+
+		void end()
+		{
+			Framebuffer::unbind();
+		}
+
+		void draw_indexed(size_t indexCount)
+		{
+			glDrawElements(GL_TRIANGLES, (int)indexCount, GL_UNSIGNED_INT, 0);
+		}
+
+		void init()
+		{
+			gl_utils::init_opengl();
+		}
+
+		void resize_viewport(uint32_t width, uint32_t height)
+		{
+			gl_utils::resize_viewport(width, height);
+		}
+	}
+
 	struct BindingContext {
-		Atlas::Shader shader;
+		Shader shader;
 		std::unordered_map<uint32_t, Texture2D> textures;
 		Framebuffer framebuffer;
 		Buffer indexBuffer;
+		Buffer storageBuffer;
 		std::unordered_map<uint32_t, Buffer> vertexBuffers;
 		VertexLayout layout;
 	};
@@ -190,28 +214,6 @@ namespace Atlas {
 		return os;
 	}
 
-	std::pair<uint32_t, uint32_t> vertex_attrib_to_gl_enum(VertexAttribute a)
-	{
-		switch (a)
-		{
-		case Atlas::VertexAttribute::INT:		return { GL_INT, 1 };
-		case Atlas::VertexAttribute::INT2:		return { GL_INT, 2 };
-		case Atlas::VertexAttribute::INT3:		return { GL_INT, 3 };
-		case Atlas::VertexAttribute::INT4:		return { GL_INT, 4 };
-		case Atlas::VertexAttribute::UINT:		return { GL_UNSIGNED_INT, 1 };
-		case Atlas::VertexAttribute::UINT2:		return { GL_UNSIGNED_INT, 2 };
-		case Atlas::VertexAttribute::UINT3:		return { GL_UNSIGNED_INT, 3 };
-		case Atlas::VertexAttribute::UINT4:		return { GL_UNSIGNED_INT, 4 };
-		case Atlas::VertexAttribute::FLOAT:		return { GL_FLOAT, 1 };
-		case Atlas::VertexAttribute::FLOAT2:	return { GL_FLOAT, 2 };
-		case Atlas::VertexAttribute::FLOAT3:	return { GL_FLOAT, 3 };
-		case Atlas::VertexAttribute::FLOAT4:	return { GL_FLOAT, 4 };
-		}
-
-		CORE_ASSERT(false, "vertex_attrib_to_gl_enum: enum not defined!");
-		return { 0, 0 };
-	}
-
 
 	Texture2D::Texture2D(const Texture2DCreateInfo &info)
 		: m_Format(info.format)
@@ -235,6 +237,28 @@ namespace Atlas {
 		info.mipmap = false;
 		info.filter = filter;
 		info.format = ColorFormat::R8G8B8A8;
+		return Texture2D(info);
+	}
+
+	Texture2D Texture2D::depth(uint32_t width, uint32_t height, TextureFilter filter)
+	{
+		Texture2DCreateInfo info{};
+		info.width = width;
+		info.height = height;
+		info.mipmap = false;
+		info.filter = filter;
+		info.format = ColorFormat::D32;
+		return Texture2D(info);
+	}
+
+	Texture2D Texture2D::depth_stencil(uint32_t width, uint32_t height, TextureFilter filter)
+	{
+		Texture2DCreateInfo info{};
+		info.width = width;
+		info.height = height;
+		info.mipmap = false;
+		info.filter = filter;
+		info.format = ColorFormat::D24S8;
 		return Texture2D(info);
 	}
 
@@ -321,18 +345,27 @@ namespace Atlas {
 		return std::hash<void *>()(m_Texture.get());
 	}
 
-	Framebuffer::Framebuffer(std::vector<Attachment> attachments)
+	Framebuffer::Framebuffer(const FramebufferCreateInfo &info)
 	{
 		m_Framebuffer = make_ref<gl_utils::GLFramebuffer>();
 
-		if (attachments.size() == 0) return;
+		if (info.colorAttachments.size() != 0) {
+			CORE_ASSERT(info.colorAttachments.at(0).is_init(), "Framebuffer::Framebuffer: first colorattachment is not initialized");
+			m_Width = info.colorAttachments.at(0).width();
+			m_Height = info.colorAttachments.at(0).height();
+		}
+		else if (info.depthAttachments.is_init()) {
+			m_Width = info.depthAttachments.width();
+			m_Height = info.depthAttachments.height();
+		}
+		else {
+			return;
+		}
 
-		m_Width = attachments.at(0).width();
-		m_Height = attachments.at(0).height();
 
 		uint32_t colorAttachmentIndx{ 0 };
 
-		for (Attachment &a : attachments) {
+		for (const FramebufferAttachment &a : info.colorAttachments) {
 			if (!a.is_init()) {
 				CORE_WARN("Framebuffer::Framebuffer: texture is not initialized!");
 				return;
@@ -348,6 +381,16 @@ namespace Atlas {
 			m_Framebuffer->push_tex_attachment(attachment + colorAttachmentIndx, a.m_Texture->id());
 			m_ColorTextures.insert({ colorAttachmentIndx, a });
 			colorAttachmentIndx++;
+		}
+
+		if (info.depthAttachments.is_init()) {
+			if (is_color_attachment(info.depthAttachments.format())) {
+				CORE_WARN("Framebuffer::Framebuffer: expected depth format, found: {}", (uint32_t)info.depthAttachments.format());
+			}
+
+			auto attachment = color_format_to_gl_attachment(info.depthAttachments.format());
+			m_Framebuffer->push_tex_attachment(attachment, info.depthAttachments.m_Texture->id());
+			m_DepthStencilTexture = info.depthAttachments;
 		}
 
 		if (!m_Framebuffer->check_status()) {
@@ -407,8 +450,8 @@ namespace Atlas {
 
 	Framebuffer Framebuffer::empty()
 	{
-		std::vector<Texture2D> att;
-		return Framebuffer(att);
+		FramebufferCreateInfo info{};
+		return Framebuffer(info);
 	}
 
 	Buffer::Buffer(const BufferCreateInfo &info)
@@ -423,25 +466,12 @@ namespace Atlas {
 		m_Buffer = make_ref<gl_utils::GLBuffer>(buffInfo);
 	}
 
-	//void Buffer::bind(BufferTypes type)
-	//{
-	//	CORE_ASSERT(m_Buffer, "Buffer::bind: buffer was not initialized!");
-	//	CORE_ASSERT(type | m_Types, "Buffer::bind: this type was not set when initializing buffer!");
-
-	//	if (type | BufferType::VERTEX) {
-	//		gl_utils::bind_vertex_buffer(m_Buffer, m_Stride, m_Index, 0);
-	//	}
-	//	if (type | BufferType::INDEX_U32) {
-	//		gl_utils::bind_index_buffer(m_Buffer);
-	//	}
-	//}
-
 	void Buffer::bind_vertex(const Buffer &buffer, uint32_t index)
 	{
 		CORE_ASSERT(buffer.is_init(), "bind_vertex_buffer: buffer was not initialized!");
 
 		if (!(buffer.type() | BufferType::VERTEX)) {
-			CORE_WARN("bind_vertex_buffer: buffer was not initialized as a vertex buffer");
+			CORE_WARN("Buffer::bind_vertex: buffer was not initialized as a vertex buffer");
 			return;
 		}
 
@@ -457,7 +487,7 @@ namespace Atlas {
 		CORE_ASSERT(buffer.is_init(), "bind_vertex_buffer: buffer was not initialized!");
 
 		if (!(buffer.type() | BufferType::INDEX_U32)) {
-			CORE_WARN("bind_vertex_buffer: buffer was not initialized as a vertex buffer");
+			CORE_WARN("Buffer::bind_index: buffer was not initialized as a vertex buffer");
 			return;
 		}
 
@@ -468,9 +498,37 @@ namespace Atlas {
 		GlobalBindingContext.indexBuffer = buffer;
 	}
 
+	void Buffer::bind_storage(const Buffer &buffer)
+	{
+		CORE_ASSERT(buffer.is_init(), "bind_vertex_buffer: buffer was not initialized!");
+
+		if (!(buffer.type() | BufferType::STORAGE)) {
+			CORE_WARN("Buffer::bind_storage: buffer was not initialized as a vertex buffer");
+			return;
+		}
+
+		if (GlobalBindingContext.storageBuffer == buffer) return;
+
+		gl_utils::bind_storage(buffer.m_Buffer);
+
+		GlobalBindingContext.storageBuffer = buffer;
+	}
+
 	size_t Buffer::hash() const
 	{
 		return std::hash<void *>()(m_Buffer.get());
+	}
+
+	Buffer Buffer::create(BufferTypes types, void *data, size_t size, BufferUsage usage, size_t stride)
+	{
+		BufferCreateInfo info{};
+		info.size = size;
+		info.data = data;
+		info.types = types;
+		info.usage = usage;
+		info.stride = stride ? stride : size;
+
+		return Buffer(info);
 	}
 
 	Buffer Buffer::uniform(void *data, size_t size, BufferUsage usage)
@@ -480,7 +538,19 @@ namespace Atlas {
 		info.data = data;
 		info.types = BufferType::UNIFORM;
 		info.usage = usage;
-		info.stride = -1;
+		info.stride = size;
+
+		return Buffer(info);
+	}
+
+	Buffer Buffer::storage(void *data, size_t size, BufferUsage usage)
+	{
+		BufferCreateInfo info{};
+		info.size = size;
+		info.data = data;
+		info.types = BufferType::STORAGE;
+		info.usage = usage;
+		info.stride = size;
 
 		return Buffer(info);
 	}
@@ -515,10 +585,17 @@ namespace Atlas {
 		return layout;
 	}
 
-	void VertexLayout::push(uint32_t count, uint32_t gl_type, uint32_t offset)
+	//void VertexLayout::push(uint32_t count, uint32_t gl_type, uint32_t offset)
+	//{
+	//	CORE_ASSERT(m_Layout, "VertexLayout::push: buffer was not initialized!");
+	//	m_Layout->push_attrib(count, gl_type, offset, m_BufferIndx);
+	//}
+
+	void VertexLayout::push(VertexAttribute attribute, uint32_t offset)
 	{
 		CORE_ASSERT(m_Layout, "VertexLayout::push: buffer was not initialized!");
-		m_Layout->push_attrib(count, gl_type, offset, m_BufferIndx);
+		auto [type, count] = vertex_attrib_to_gl_enum(attribute);
+		m_Layout->push_attrib(count, type, offset, m_BufferIndx);
 	}
 
 	void VertexLayout::set_index(uint32_t index)

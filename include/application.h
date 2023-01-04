@@ -77,12 +77,13 @@ namespace Atlas {
 		std::vector<Event> m_QueuedEvents;
 
 		Texture2D m_ColorBuffer;
+		Texture2D m_DepthBuffer;
 		Shader m_Shader;
 		Buffer m_VertexBuffer;
 		Buffer m_IndexBuffer;
 		Texture2D m_Texture;
 
-		OrthographicCameraController m_CameraController;
+		PerspectiveCameraController m_CameraController;
 
 		glm::vec2 m_ViewportSize;
 

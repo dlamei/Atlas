@@ -11,16 +11,18 @@ namespace Atlas {
 
 		virtual void set_position(const glm::vec3 &pos) = 0;
 
-		virtual glm::vec3 &get_position() = 0;
-		virtual glm::mat4 &get_projection() = 0;
-		virtual glm::mat4 &get_view() = 0;
-		virtual glm::mat4 &get_view_projection() = 0;
+		virtual const glm::vec3 &get_position() = 0;
+		virtual const glm::mat4 &get_projection() = 0;
+		virtual const glm::mat4 &get_view() = 0;
+		virtual const glm::mat4 &get_view_projection() = 0;
 	};
 
 	class CameraController {
 	public:
 		virtual void on_update(float ts) = 0;
 		virtual void on_event(Event &e) = 0;
+		virtual void set_position(const glm::vec3 &pos) = 0;
+		virtual const glm::vec3 &get_position() = 0;
 
 		virtual Camera &get_camera() = 0;
 
@@ -45,7 +47,7 @@ namespace Atlas {
 		OrthographicCamera(float left, float right, float bottom, float top);
 		OrthographicCamera(float left, float right, float bottom, float top, float near, float far);
 
-		inline glm::vec3 &get_position() override { return m_Position; }
+		const glm::vec3 &get_position() override { return m_Position; }
 		void set_position(const glm::vec3 &position) override { m_Position = position; recalculate_view(); }
 
 		inline const float get_rotation() const { return m_Rotation; }
@@ -53,9 +55,9 @@ namespace Atlas {
 
 		void set_projection(float left, float right, float bottom, float top);
 
-		inline glm::mat4 &get_projection() override { return m_ProjectionMatrix; }
-		inline glm::mat4 &get_view() override { return m_ViewMatrix; }
-		inline glm::mat4 &get_view_projection() override { return m_ViewProjectionMatrix; }
+		const glm::mat4 &get_projection() override { return m_ProjectionMatrix; }
+		const glm::mat4 &get_view() override { return m_ViewMatrix; }
+		const glm::mat4 &get_view_projection() override { return m_ViewProjectionMatrix; }
 	};
 
 	class OrthographicCameraController : public CameraController
@@ -78,6 +80,8 @@ namespace Atlas {
 
 		void on_update(float ts) override;
 		void on_event(Event &e) override;
+		void set_position(const glm::vec3 &pos) override;
+		const glm::vec3 &get_position() override;
 
 		OrthographicCamera &get_camera() override { return m_Camera; }
 	};
@@ -109,13 +113,13 @@ namespace Atlas {
 		void set_fov(float fov) { m_Fov = fov; recalculate_projection(); }
 		void set_aspect_ratio(float aspectRatio) { m_AspectRatio = aspectRatio; recalculate_projection(); }
 
-		glm::mat4 &get_projection() override { return m_ProjectionMatrix; }
-		glm::mat4 &get_view() override { return m_ViewMatrix; }
-		glm::mat4 &get_view_projection()  override { return m_ViewProjectionMatrix; }
-		glm::vec3 &get_up() { return m_Up; }
-		glm::vec3 &get_front() { return m_Front; }
-		glm::vec3 &get_position() override { return m_Position; }
-		glm::vec3 &get_right() { return m_Right; }
+		const glm::mat4 &get_projection() override { return m_ProjectionMatrix; }
+		const glm::mat4 &get_view() override { return m_ViewMatrix; }
+		const glm::mat4 &get_view_projection()  override { return m_ViewProjectionMatrix; }
+		const glm::vec3 &get_up() { return m_Up; }
+		const glm::vec3 &get_front() { return m_Front; }
+		const glm::vec3 &get_position() override { return m_Position; }
+		const glm::vec3 &get_right() { return m_Right; }
 
 		inline float get_aspect_ratio() { return m_AspectRatio; }
 
@@ -145,13 +149,15 @@ namespace Atlas {
 
 		void on_update(float ts) override;
 		void on_event(Event &e) override;
+		void set_position(const glm::vec3 &pos) override;
+		const glm::vec3 &get_position() override;
 
 		inline void set_fov(float fov) { m_Camera.set_fov(fov); }
 		inline void set_aspect_ratio(float aspectRatio) { m_Camera.set_aspect_ratio(aspectRatio); }
 
 		inline float get_aspect_ratio() { return m_Camera.get_aspect_ratio(); }
 
-		inline PerspectiveCamera &get_camera() override { return m_Camera; }
+		PerspectiveCamera &get_camera() override { return m_Camera; }
 
 		const glm::mat4 &get_view() { return m_Camera.get_view(); }
 		const glm::mat4 &get_projection() { return m_Camera.get_projection(); }

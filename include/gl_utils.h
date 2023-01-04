@@ -102,6 +102,9 @@ namespace gl_utils {
 	};
 
 	void bind_uniform_buffer(uint32_t blockBinding, const Ref<GLBuffer> &buffer, uint32_t offset = 0);
+	void bind_vertex_buffer(const Ref<GLBuffer> &GLBuffer, size_t stride, uint32_t indx = 0, uint32_t offset = 0);
+	void bind_index_buffer(const Ref<GLBuffer> &buffer);
+	void bind_storage(const Ref<GLBuffer> &buffer);
 
 	using GLShaderCreateInfo = std::vector<std::pair<std::string, GLenum>>;
 
@@ -205,7 +208,4 @@ namespace gl_utils {
 		uint32_t m_VAO{ 0 };
 		uint32_t m_AttribIndx{ 0 };
 	};
-
-	void bind_vertex_buffer(Ref<GLBuffer> GLBuffer, size_t stride, uint32_t indx = 0, uint32_t offset = 0);
-	void bind_index_buffer(Ref<GLBuffer> buffer);
 }
