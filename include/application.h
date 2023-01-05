@@ -83,7 +83,7 @@ namespace Atlas {
 		Buffer m_IndexBuffer;
 		Texture2D m_Texture;
 
-		PerspectiveCameraController m_CameraController;
+		OrthographicCameraController m_CameraController;
 
 		glm::vec2 m_ViewportSize;
 

@@ -151,53 +151,96 @@ namespace gl_utils {
 	void reflect_shader(uint32_t program, GLShaderReflectionData *data)
 	{
 		*data = GLShaderReflectionData{};
-		std::string buffer;
-		int nameLength;
-		glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &nameLength);
-		buffer.resize(nameLength);
-		int count;
 
 		//uniform
-		glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &count);
-		for (int i = 0; i < count; i++) {
-			GLenum type;
-			int nameLen, size, location;
-			glGetActiveUniform(program, (uint32_t)i, (int)buffer.size(), &nameLen, &size, &type, buffer.data());
-			if (type == GL_UNIFORM_BLOCK) continue;
-			std::string name(buffer.data(), nameLen);
-			location = glGetUniformLocation(program, name.c_str());
-			if (location == -1) continue;
+		{
+			int count{ 0 };
+			std::string buffer;
+			int buffSize{ 0 };
 
-			GLUniformInfo info{};
-			info.location = location;
-			info.type = type;
-			info.size;
+			glGetProgramInterfaceiv(program, GL_UNIFORM, GL_MAX_NAME_LENGTH, &buffSize);
+			buffer.resize(buffSize);
 
-			data->uniforms.insert({ name, info });
-			//CORE_TRACE("Uniform #{} name: {} type: 0x{:x} size: {} location: {}", i, name, type, size, location);
+			glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &count);
+			for (int i = 0; i < count; i++) {
+				GLenum type;
+				int nameLen, size, location;
+				glGetActiveUniform(program, (uint32_t)i, (int)buffer.size(), &nameLen, &size, &type, buffer.data());
+				if (type == GL_UNIFORM_BLOCK) continue;
+				std::string name(buffer.data(), nameLen);
+				location = glGetUniformLocation(program, name.c_str());
+				if (location == -1) continue;
+
+				GLUniformInfo info{};
+				info.location = location;
+				info.type = type;
+				info.size;
+
+				data->uniforms.insert({ name, info });
+			}
 		}
 
 		//uniform blocks
-		glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, &nameLength);
-		buffer.resize(nameLength);
+		{
+			int count{ 0 };
+			std::string buffer;
+			int buffSize{ 0 };
 
-		glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCKS, &count);
-		for (int i = 0; i < count; i++) {
-			int binding, dataSize, nameLen;
-			glGetActiveUniformBlockName(program, (uint32_t)i, (int)buffer.size(), &nameLen, buffer.data());
-			glGetActiveUniformBlockiv(program, (uint32_t)i, GL_UNIFORM_BLOCK_BINDING, &binding);
-			glGetActiveUniformBlockiv(program, (uint32_t)i, GL_UNIFORM_BLOCK_DATA_SIZE, &dataSize);
-			std::string name(buffer.data(), nameLen);
+			glGetProgramInterfaceiv(program, GL_UNIFORM_BLOCK, GL_MAX_NAME_LENGTH, &buffSize);
+			buffer.resize(buffSize);
 
-			int indx = glGetUniformBlockIndex(program, name.c_str());
+			glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCKS, &count);
+			for (int i = 0; i < count; i++) {
+				int binding = 0, dataSize = 0, nameLen = 0;
+				glGetActiveUniformBlockName(program, (uint32_t)i, (int)buffer.size(), &nameLen, buffer.data());
+				glGetActiveUniformBlockiv(program, (uint32_t)i, GL_UNIFORM_BLOCK_BINDING, &binding);
+				glGetActiveUniformBlockiv(program, (uint32_t)i, GL_UNIFORM_BLOCK_DATA_SIZE, &dataSize);
+				std::string name(buffer.data(), nameLen);
 
-			GLUniformBlockInfo info{};
-			info.binding = binding;
-			info.size = dataSize;
-			info.index = indx;
+				int indx = glGetUniformBlockIndex(program, name.c_str());
 
-			data->unifromBlocks.insert({ name, info });
-			//CORE_TRACE("Uniform Block #{} name: {} binding: {} dataSize: {}", i, name, binding, dataSize);
+				GLUniformBlockInfo info{};
+				info.binding = binding;
+				info.size = dataSize;
+				info.index = indx;
+
+				data->unifromBlocks.insert({ name, info });
+			}
+		}
+
+		//storage buffers
+		{
+			int count{ 0 };
+			std::string buffer;
+			int buffSize{ 0 };
+
+			glGetProgramInterfaceiv(program, GL_SHADER_STORAGE_BLOCK, GL_MAX_NAME_LENGTH, &buffSize);
+			buffer.resize(buffSize);
+
+			glGetProgramInterfaceiv(program, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, &count);
+
+			for (int i = 0; i < count; i++) {
+				int nameLength = 0;
+				glGetProgramResourceName(program, GL_SHADER_STORAGE_BLOCK, i, buffSize, &nameLength, buffer.data());
+				std::string name(buffer.data(), nameLength);
+
+				int binding = 0;
+				GLenum prop = GL_BUFFER_BINDING;
+				glGetProgramResourceiv(program, GL_SHADER_STORAGE_BLOCK, i, 1, &prop, 1, nullptr, &binding);
+
+				int size = 0;
+				prop = GL_BUFFER_DATA_SIZE;
+				glGetProgramResourceiv(program, GL_SHADER_STORAGE_BLOCK, i, 1, &prop, 1, nullptr, &size);
+
+				int index = glGetProgramResourceIndex(program, GL_SHADER_STORAGE_BLOCK, name.data());
+
+				GLStorageBlockInfo info{};
+				info.size = size;
+				info.binding = binding;
+				info.index = index;
+
+				data->storageBlocks.insert({ name, info });
+			}
 		}
 
 	}
@@ -238,21 +281,14 @@ namespace gl_utils {
 	{
 		glCreateBuffers(1, &m_ID);
 
-		if (!info.data.second || !info.data.first) {
+		if (info.data == nullptr) {
 			glNamedBufferData(m_ID, m_Size, nullptr, info.usage);
 			return;
 		}
-
-		if (info.data.second > m_Size) {
-			CORE_WARN("GLBuffer::GLBuffer: size of the data has to be smaller or equal to the size of the buffer");
-		}
-
-		if (info.data.second == m_Size) {
-			glNamedBufferData(m_ID, m_Size, info.data.first, info.usage);
-		}
 		else {
-			glNamedBufferSubData(m_ID, 0, info.data.second, info.data.first);
+			glNamedBufferData(m_ID, m_Size, info.data, info.usage);
 		}
+
 	}
 
 	void GLBuffer::set_data(void *data, size_t size)
@@ -266,7 +302,7 @@ namespace gl_utils {
 		glDeleteBuffers(1, &m_ID);
 	}
 
-	void bind_uniform_buffer(uint32_t blockBinding, const Ref<GLBuffer> &buffer, uint32_t offset)
+	void bind_uniform_buffer(const Ref<GLBuffer> &buffer, uint32_t blockBinding, uint32_t offset)
 	{
 		glBindBufferRange(GL_UNIFORM_BUFFER, blockBinding, buffer->id(), offset, buffer->size());
 	}
@@ -284,9 +320,9 @@ namespace gl_utils {
 		glBindBuffer(GL_INDEX_BUFFER, buffer->id());
 	}
 
-	void bind_storage(const Ref<GLBuffer> &buffer)
+	void bind_storage_buffer(const Ref<GLBuffer> &buffer, uint32_t blockBinding, uint32_t offset)
 	{
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer->id());
+		glBindBufferRange(GL_SHADER_STORAGE_BUFFER, blockBinding, buffer->id(), offset, buffer->size());
 	}
 
 	GLRenderbuffer::GLRenderbuffer(GLRenderbufferCreateInfo &info)
@@ -360,6 +396,11 @@ namespace gl_utils {
 		for (auto &block : m_ReflectionData.unifromBlocks) {
 			if (block.second.binding == 0) block.second.binding = block.second.index;
 			glUniformBlockBinding(m_ID, block.second.index, block.second.binding);
+		}
+
+		for (auto &block : m_ReflectionData.storageBlocks) {
+			if (block.second.binding == 0) block.second.binding = block.second.index;
+			glShaderStorageBlockBinding(m_ID, block.second.index, block.second.binding);
 		}
 	}
 
@@ -489,14 +530,24 @@ namespace gl_utils {
 		return m_ReflectionData.uniforms.find(name)->second.location;
 	}
 
-	int GLShader::get_block_binding(const std::string &name)
+	int GLShader::get_uniform_block_binding(const std::string &name)
 	{
-		if (m_ReflectionData.unifromBlocks.find(name) == m_ReflectionData.unifromBlocks.end()) {
-			CORE_WARN("GLShader::get_block_binding: could not find uniform: {}", name);
+		const auto &it = m_ReflectionData.unifromBlocks.find(name);
+		if (it == m_ReflectionData.unifromBlocks.end()) {
 			return -1;
 		}
 
-		return m_ReflectionData.unifromBlocks.find(name)->second.binding;
+		return it->second.binding;
+	}
+
+	int GLShader::get_storage_block_binding(const std::string &name)
+	{
+		const auto it = m_ReflectionData.storageBlocks.find(name);
+		if (it == m_ReflectionData.storageBlocks.end()) {
+			return -1;
+		}
+
+		return it->second.binding;
 	}
 
 	GLVertexLayout::GLVertexLayout()

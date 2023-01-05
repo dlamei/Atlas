@@ -7,6 +7,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 
+#include "RenderApi.h"
+
 struct Vertex {
 	glm::vec3 pos;
 	glm::vec2 uv;
@@ -43,7 +45,7 @@ namespace Atlas {
 			m_Shader = Shader::load("assets/shaders/default.vert", "assets/shaders/default.frag", layout);
 			m_Shader.set("tex", 0);
 
-			Buffer cameraBuffer = Buffer::uniform(glm::ortho(-1, 1, -1, 1), BufferUsage::DYNAMIC_DRAW);
+			Buffer cameraBuffer = Buffer::uniform(glm::ortho(-1, 1, -1, 1), BufferUsage::DYNAMIC);
 			m_Shader.set("CameraBuffer", cameraBuffer);
 		}
 
@@ -70,7 +72,7 @@ namespace Atlas {
 		//RenderApi::enable_clear_depth(false);
 		RenderApi::clear_color({ 60, 5, 45 });
 
-		m_CameraController.set_position({ 0, 0, 3 });
+		//m_CameraController.set_position({ 0, 0, 3 });
 	}
 
 	Application::~Application()
@@ -128,7 +130,7 @@ namespace Atlas {
 		Buffer::bind_vertex(m_VertexBuffer);
 		Buffer::bind_index(m_IndexBuffer);
 
-		RenderApi::draw_indexed(6);
+		RenderApi::draw_indexed();
 		RenderApi::end();
 
 		render_viewport();

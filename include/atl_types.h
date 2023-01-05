@@ -19,6 +19,7 @@ namespace Atlas {
 	class Framebuffer;
 	class Buffer;
 	class Shader;
+	class VertexLayout;
 }
 
 namespace ImGui {
@@ -26,10 +27,32 @@ namespace ImGui {
 	void Image(const Atlas::Texture2D &texture, const ImVec2 &size,
 		const ImVec2 &uv0 = ImVec2(0, 1), const ImVec2 &uv1 = ImVec2(1, 0),
 		const ImVec4 &tint_col = ImVec4(1, 1, 1, 1), const ImVec4 &border_col = ImVec4(0, 0, 0, 0));
-
 }
 
 namespace Atlas {
+
+	namespace RenderApi {
+		void bind_shader(const Shader &shader);
+		void unbind_shader();
+
+		void bind_vertex_buffer(const Buffer &buffer, uint32_t index = 0);
+		void unbind_vertex_buffer(uint32_t index);
+
+		void bind_index_buffer(const Buffer &buffer);
+		void unbind_index_buffer();
+
+		void bind_framebuffer(const Framebuffer &fb);
+		void unbind_framebuffer();
+
+		void bind_vertexlayout(const VertexLayout &layout);
+		void unbind_vertexlayout();
+
+		void bind_texture(const Texture2D &texture, uint32_t index = 0);
+		void unbind_texture(uint32_t index);
+
+		Buffer &get_bound_index_buffer();
+		Buffer &get_bound_vertex_buffer(uint32_t index = 0);
+	}
 
 	class Color {
 	public:
@@ -52,26 +75,6 @@ namespace Atlas {
 	};
 
 	std::ostream &operator<<(std::ostream &os, const Color &c);
-
-	namespace RenderApi {
-
-		void frame_start();
-		void frame_end();
-
-		void enable_clear_color(bool b);
-		void enable_clear_depth(bool b);
-		void clear_color(Atlas::Color c);
-
-		void begin(const Atlas::Texture2D &color);
-		void begin(const Atlas::Texture2D &color, const Atlas::Texture2D &depth);
-		void begin(const Atlas::Framebuffer &frameBuffer);
-		void end();
-
-		void draw_indexed(size_t indexCount);
-
-		void init();
-		void resize_viewport(uint32_t width, uint32_t height);
-	}
 
 	enum class ColorFormat : uint32_t {
 		R8G8B8A8,
@@ -105,6 +108,7 @@ namespace Atlas {
 		static std::optional<Texture2D> load(const char *filePath, TextureFilter filter = TextureFilter::LINEAR);
 
 		static void bind(const Texture2D &texture, uint32_t indx = 0);
+		static void unbind(uint32_t index);
 
 		void set_data(Color *data) const;
 
@@ -128,6 +132,7 @@ namespace Atlas {
 		Ref<gl_utils::GLTexture2D> m_Texture{ nullptr };
 
 		friend class Framebuffer;
+		friend void RenderApi::bind_texture(const Texture2D &, uint32_t);
 	};
 
 	using FramebufferAttachment = Texture2D;
@@ -149,6 +154,7 @@ namespace Atlas {
 
 		static void bind(const Framebuffer &framebuffer);
 		static void unbind();
+
 		void set_color_attachment(const Texture2D &texture, uint32_t index);
 		void set_depth_stencil_texture(const Texture2D &texture);
 
@@ -171,11 +177,13 @@ namespace Atlas {
 
 		uint32_t m_Width;
 		uint32_t m_Height;
+
+		friend void RenderApi::bind_framebuffer(const Framebuffer &);
 	};
 
 	enum class BufferUsage : uint32_t {
-		STATIC_DRAW,
-		DYNAMIC_DRAW,
+		STATIC,
+		DYNAMIC,
 	};
 
 
@@ -207,7 +215,7 @@ namespace Atlas {
 		Buffer(const BufferCreateInfo &info);
 
 		template <typename T>
-		static Buffer vertex(T *data, size_t count, BufferUsage usage = BufferUsage::STATIC_DRAW) {
+		static Buffer vertex(T *data, size_t count, BufferUsage usage = BufferUsage::STATIC) {
 			BufferCreateInfo info{};
 			info.size = sizeof(T) * count;
 			info.data = (void *)data;
@@ -219,7 +227,7 @@ namespace Atlas {
 		}
 
 		template <typename T>
-		static Buffer uniform(const T &value, BufferUsage usage = BufferUsage::STATIC_DRAW) {
+		static Buffer uniform(const T &value, BufferUsage usage = BufferUsage::STATIC) {
 			BufferCreateInfo info{};
 			info.size = sizeof(T);
 			info.data = (void *)&value;
@@ -231,7 +239,8 @@ namespace Atlas {
 		}
 
 		template <typename T>
-		static Buffer storage(const T &value, BufferUsage usage = BufferUsage::STATIC_DRAW) {
+		static Buffer storage(const T &value, BufferUsage usage = BufferUsage::STATIC) {
+			BufferCreateInfo info{};
 			info.size = sizeof(T);
 			info.data = (void *)&value;
 			info.types = BufferType::STORAGE;
@@ -241,11 +250,11 @@ namespace Atlas {
 			return Buffer(info);
 		}
 
-		static Buffer create(BufferTypes types, void *data, size_t size, BufferUsage usage = BufferUsage::STATIC_DRAW, size_t stride = 0);
+		static Buffer create(BufferTypes types, void *data, size_t size, BufferUsage usage = BufferUsage::STATIC, size_t stride = 0);
 
-		static Buffer uniform(void *data, size_t size, BufferUsage usage = BufferUsage::STATIC_DRAW);
-		static Buffer storage(void *data, size_t size, BufferUsage usage = BufferUsage::STATIC_DRAW);
-		static Buffer index(uint32_t *data, size_t count, BufferUsage usage = BufferUsage::STATIC_DRAW);
+		static Buffer uniform(void *data, size_t size, BufferUsage usage = BufferUsage::STATIC);
+		static Buffer storage(void *data, size_t size, BufferUsage usage = BufferUsage::STATIC);
+		static Buffer index(uint32_t *data, size_t count, BufferUsage usage = BufferUsage::STATIC);
 
 		void set_data(void *data, size_t size);
 
@@ -259,8 +268,11 @@ namespace Atlas {
 		inline bool is_init() const { return m_Buffer != nullptr; }
 
 		static void bind_vertex(const Buffer &buffer, uint32_t index = 0);
+		static void unbind_vertex(uint32_t index = 0);
 		static void bind_index(const Buffer &buffer);
-		static void bind_storage(const Buffer &buffer);
+		static void unbind_index();
+
+		static void map(const Buffer &buffer, std::function<void(void *)> func);
 
 		friend bool operator==(const Buffer &b1, const Buffer &b2);
 		friend bool operator!=(const Buffer &b1, const Buffer &b2);
@@ -273,6 +285,8 @@ namespace Atlas {
 		size_t m_Stride;
 
 		friend class Shader;
+		friend void RenderApi::bind_vertex_buffer(const Buffer &, uint32_t index);
+		friend void RenderApi::bind_index_buffer(const Buffer &);
 	};
 
 	enum class VertexAttribute : uint32_t {
@@ -338,12 +352,11 @@ namespace Atlas {
 			return layout;
 		}
 
-		//void push(uint32_t count, VertexAttribute gl_type, uint32_t offset);
 		void push(VertexAttribute attribute, uint32_t offset);
 		void set_index(uint32_t index);
 
-		//void bind() const;
 		static void bind(const VertexLayout &layout);
+		static void unbind();
 
 		template <typename T, typename U>
 		void push(VertexAttribute attribute, U T:: *member) {
@@ -369,6 +382,8 @@ namespace Atlas {
 
 		size_t hash() const;
 
+		friend void RenderApi::bind_vertexlayout(const VertexLayout &);
+
 	private:
 		Ref<gl_utils::GLVertexLayout> m_Layout;
 		uint32_t m_BufferIndx{ 0 };
@@ -377,6 +392,7 @@ namespace Atlas {
 		{
 			return (char *)&((T *)nullptr->*member) - (char *)nullptr;
 		}
+
 	};
 
 	enum class ShaderType {
@@ -404,32 +420,33 @@ namespace Atlas {
 		inline bool is_init() const { return m_Shader != nullptr; }
 
 		template <typename T>
-		void set(const char *name, T value)
+		void set(const std::string &name, T value)
 		{
-			CORE_ASSERT(false, "Shader::set not defined for this type");
+			CORE_ASSERT(false, "Shader::set not defined for type: {}", typeid(T).name());
 		}
 
-		void set(const char *name, int32_t value);
-		void set(const char *name, const glm::ivec2 &value);
-		void set(const char *name, const glm::ivec3 &value);
-		void set(const char *name, const glm::ivec4 &value);
+		void set(const std::string &name, int32_t value);
+		void set(const std::string &name, const glm::ivec2 &value);
+		void set(const std::string &name, const glm::ivec3 &value);
+		void set(const std::string &name, const glm::ivec4 &value);
 
-		void set(const char *name, uint32_t value);
-		void set(const char *name, const glm::uvec2 &value);
-		void set(const char *name, const glm::uvec3 &value);
-		void set(const char *name, const glm::uvec4 &value);
+		void set(const std::string &name, uint32_t value);
+		void set(const std::string &name, const glm::uvec2 &value);
+		void set(const std::string &name, const glm::uvec3 &value);
+		void set(const std::string &name, const glm::uvec4 &value);
 
-		void set(const char *name, float value);
-		void set(const char *name, const glm::vec2 &value);
-		void set(const char *name, const glm::vec3 &value);
-		void set(const char *name, const glm::vec4 &value);
+		void set(const std::string &name, float value);
+		void set(const std::string &name, const glm::vec2 &value);
+		void set(const std::string &name, const glm::vec3 &value);
+		void set(const std::string &name, const glm::vec4 &value);
 
-		void set(const char *name, const glm::mat3 &value);
-		void set(const char *name, const glm::mat4 &value);
+		void set(const std::string &name, const glm::mat3 &value);
+		void set(const std::string &name, const glm::mat4 &value);
 
-		void set(const char *name, const Buffer &buffer);
+		void set(const std::string &name, const Buffer &buffer);
 
 		Buffer &get_uniform_buffer(const char *name);
+		Buffer &get_storage_buffer(const char *name);
 
 		friend bool operator==(const Shader &s1, const Shader &s2);
 		friend bool operator!=(const Shader &s1, const Shader &s2);
@@ -439,7 +456,12 @@ namespace Atlas {
 	private:
 		Ref<gl_utils::GLShader> m_Shader;
 		std::unordered_map<std::string, Buffer> m_UniformBuffers;
+		std::unordered_map<std::string, Buffer> m_StorageBuffers;
 
 		VertexLayout m_Layout;
+
+		friend void RenderApi::bind_shader(const Shader &);
+
 	};
+
 }

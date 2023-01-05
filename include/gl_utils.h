@@ -27,9 +27,16 @@ namespace gl_utils {
 		int size;
 	};
 
+	struct GLStorageBlockInfo {
+		int size;
+		int index;
+		int binding;
+	};
+
 	struct GLShaderReflectionData {
 		std::unordered_map<std::string, GLUniformInfo> uniforms;
 		std::unordered_map<std::string, GLUniformBlockInfo> unifromBlocks;
+		std::unordered_map<std::string, GLStorageBlockInfo> storageBlocks;
 	};
 
 	void create_texture2D(uint32_t width, uint32_t height, GLenum format, bool mipmap, uint32_t *texture);
@@ -81,7 +88,8 @@ namespace gl_utils {
 	struct GLBufferCreateInfo {
 		GLenum usage;
 		size_t size;
-		std::pair<void *, size_t> data{ nullptr, 0 }; //ptr to data, size
+		void *data;
+		//std::pair<void *, size_t> data{ nullptr, 0 }; //ptr to data, size
 	};
 
 	class GLBuffer {
@@ -101,10 +109,10 @@ namespace gl_utils {
 		uint32_t m_ID{ 0 };
 	};
 
-	void bind_uniform_buffer(uint32_t blockBinding, const Ref<GLBuffer> &buffer, uint32_t offset = 0);
+	void bind_uniform_buffer(const Ref<GLBuffer> &buffer, uint32_t blockBinding, uint32_t offset = 0);
 	void bind_vertex_buffer(const Ref<GLBuffer> &GLBuffer, size_t stride, uint32_t indx = 0, uint32_t offset = 0);
 	void bind_index_buffer(const Ref<GLBuffer> &buffer);
-	void bind_storage(const Ref<GLBuffer> &buffer);
+	void bind_storage_buffer(const Ref<GLBuffer> &buffer, uint32_t blockBinding, uint32_t offset = 0);
 
 	using GLShaderCreateInfo = std::vector<std::pair<std::string, GLenum>>;
 
@@ -140,7 +148,8 @@ namespace gl_utils {
 
 		GLUniformInfo *get_uniform_info(const std::string &name);
 		int get_uniform_location(const std::string &name);
-		int get_block_binding(const std::string &name);
+		int get_uniform_block_binding(const std::string &name);
+		int get_storage_block_binding(const std::string &name);
 
 		inline uint32_t id() { return m_ID; }
 

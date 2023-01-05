@@ -77,8 +77,8 @@ GLenum texture_mag_filter_to_gl_enum(Atlas::TextureFilter filter, bool mipmap) {
 GLenum buffer_usage_to_gl_enum(Atlas::BufferUsage usage) {
 	switch (usage)
 	{
-	case Atlas::BufferUsage::STATIC_DRAW: return GL_STATIC_DRAW;
-	case Atlas::BufferUsage::DYNAMIC_DRAW: return GL_DYNAMIC_DRAW;
+	case Atlas::BufferUsage::STATIC: return GL_STATIC_DRAW;
+	case Atlas::BufferUsage::DYNAMIC: return GL_DYNAMIC_DRAW;
 	}
 
 	CORE_ASSERT(false, "buffer_usage_to_gl_enum: texture format {} not defined", (uint32_t)usage);

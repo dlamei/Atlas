@@ -70,7 +70,7 @@ namespace Atlas {
 
 		glfwMakeContextCurrent(m_Window);
 		gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-		glfwSwapInterval(0);
+		glfwSwapInterval(1);
 
 		{
 			int w, h;

@@ -20,6 +20,8 @@ set(SOURCES
 	src/application.cpp
 	src/camera.cpp
 	src/atl_types.cpp
+	src/RenderApi.cpp
+	src/Render2D.cpp
 	)
 
 set(HEADERS
@@ -33,6 +35,8 @@ set(HEADERS
 	include/application.h
 	include/atl_types.h
 	include/gl_atl_utils.h
+	include/RenderApi.h
+	include/Render2D.h
 	)
 
 set(EMBEDED

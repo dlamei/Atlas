@@ -13,151 +13,17 @@ void ImGui::Image(const Atlas::Texture2D &texture, const ImVec2 &size, const ImV
 
 namespace Atlas {
 
-	namespace RenderApi {
-
-		struct CachedFramebuffer {
-			Framebuffer framebuffer;
-			bool used{ false };
-		};
-
-		struct RenderContext {
-			std::unordered_map<size_t, CachedFramebuffer> framebuffers;
-			bool clearColorBuffer{ true };
-			bool clearDepthBuffer{ true };
-			glm::vec4 clearColor{ 0, 0, 0, 0 };
-		};
-
-		static RenderContext GlobalRenderContext{};
-
-		size_t framebuffer_create_hash(const FramebufferCreateInfo &info) {
-			size_t hash = 0;
-
-			for (const auto &col : info.colorAttachments) {
-				if (col.is_init()) {
-					hash ^= col.hash();
-				}
-			}
-
-			if (info.depthAttachments.is_init()) hash ^= info.depthAttachments.hash();
-
-			return hash;
-		}
-
-		Framebuffer get_framebuffer(const FramebufferCreateInfo &info) {
-
-			size_t hash = framebuffer_create_hash(info);
-
-			if (GlobalRenderContext.framebuffers.find(hash) != GlobalRenderContext.framebuffers.end()) {
-				auto it = GlobalRenderContext.framebuffers.find(hash);
-				it->second.used = true;
-				return it->second.framebuffer;
-			}
-
-			Framebuffer fb{ info };
-			CachedFramebuffer cFb{};
-			cFb.framebuffer = fb;
-			cFb.used = true;
-
-			GlobalRenderContext.framebuffers.insert({ hash, cFb });
-
-			return fb;
-		}
-
-		void begin(const Texture2D &color) {
-
-			FramebufferCreateInfo fbInfo{};
-			fbInfo.depthAttachments = { color };
-
-			Framebuffer fb = get_framebuffer(fbInfo);
-			begin(fb);
-		}
-
-		void begin(const Texture2D &color, const Texture2D &depth)
-		{
-			FramebufferCreateInfo fbInfo{};
-			fbInfo.colorAttachments = { color };
-			fbInfo.depthAttachments = depth;
-
-			Framebuffer fb = get_framebuffer(fbInfo);
-			begin(fb);
-		}
-
-		void begin(const Framebuffer &frameBuffer)
-		{
-			glm::vec4 col = GlobalRenderContext.clearColor;
-
-			Framebuffer::bind(frameBuffer);
-
-			glClearColor(col.r, col.g, col.b, col.a);
-			glClear(GlobalRenderContext.clearColorBuffer ? GL_COLOR_BUFFER_BIT : 0 || GlobalRenderContext.clearDepthBuffer ? GL_DEPTH_BUFFER_BIT : 0);
-		}
-
-		void frame_start()
-		{
-			for (auto &it : GlobalRenderContext.framebuffers) {
-				it.second.used = false;
-			}
-		}
-
-		void frame_end()
-		{
-			auto &framebuffers = GlobalRenderContext.framebuffers;
-
-			//TODO: maybe only delete when not used for multiple frames
-			for (auto it = framebuffers.begin(); it != framebuffers.end();) {
-				if (!it->second.used) it = framebuffers.erase(it);
-				else it++;
-			}
-
-		}
-
-		void enable_clear_color(bool b)
-		{
-			GlobalRenderContext.clearColorBuffer = b;
-		}
-
-		void enable_clear_depth(bool b)
-		{
-			GlobalRenderContext.clearDepthBuffer = b;
-		}
-
-		void clear_color(Color c)
-		{
-			GlobalRenderContext.clearColor = c.normalized();
-		}
-
-		void end()
-		{
-			Framebuffer::unbind();
-		}
-
-		void draw_indexed(size_t indexCount)
-		{
-			glDrawElements(GL_TRIANGLES, (int)indexCount, GL_UNSIGNED_INT, 0);
-		}
-
-		void init()
-		{
-			gl_utils::init_opengl();
-		}
-
-		void resize_viewport(uint32_t width, uint32_t height)
-		{
-			gl_utils::resize_viewport(width, height);
-		}
-	}
-
 	struct BindingContext {
+		VertexLayout layout;
 		Shader shader;
-		std::unordered_map<uint32_t, Texture2D> textures;
 		Framebuffer framebuffer;
 		Buffer indexBuffer;
-		Buffer storageBuffer;
+
+		std::unordered_map<uint32_t, Texture2D> textures;
 		std::unordered_map<uint32_t, Buffer> vertexBuffers;
-		VertexLayout layout;
 	};
 
-	static BindingContext GlobalBindingContext{};
+	static BindingContext s_GlobalBindingContext;
 
 	uint32_t to_rgb(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 		uint32_t result = (a << 24) | (r << 16) | (g << 8) | b;
@@ -303,12 +169,12 @@ namespace Atlas {
 	void Texture2D::bind(const Texture2D &texture, uint32_t indx)
 	{
 		CORE_ASSERT(texture.is_init(), "Texture2D::bind: texture was not initialized!");
+		RenderApi::bind_texture(texture, indx);
+	}
 
-		if (GlobalBindingContext.textures.find(indx) != GlobalBindingContext.textures.end()) return;
-
-		texture.m_Texture->bind(indx);
-
-		GlobalBindingContext.textures.insert_or_assign(indx, texture);
+	void Texture2D::unbind(uint32_t index)
+	{
+		RenderApi::unbind_texture(index);
 	}
 
 	void Texture2D::set_data(Color *data) const
@@ -436,16 +302,12 @@ namespace Atlas {
 	void Framebuffer::bind(const Framebuffer &framebuffer)
 	{
 		CORE_ASSERT(framebuffer.is_init(), "Framebuffer::bind: framebuffer was not initialized");
-		if (GlobalBindingContext.framebuffer == framebuffer) return;
-
-		framebuffer.m_Framebuffer->bind();
-		GlobalBindingContext.framebuffer = framebuffer;
+		RenderApi::bind_framebuffer(framebuffer);
 	}
 
 	void Framebuffer::unbind()
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		GlobalBindingContext.framebuffer = Framebuffer();
+		RenderApi::unbind_framebuffer();
 	}
 
 	Framebuffer Framebuffer::empty()
@@ -460,7 +322,7 @@ namespace Atlas {
 
 		gl_utils::GLBufferCreateInfo buffInfo{};
 		buffInfo.size = info.size;
-		buffInfo.data = { info.data, info.size };
+		buffInfo.data = info.data;
 		buffInfo.usage = buffer_usage_to_gl_enum(info.usage);
 
 		m_Buffer = make_ref<gl_utils::GLBuffer>(buffInfo);
@@ -475,11 +337,12 @@ namespace Atlas {
 			return;
 		}
 
-		if (GlobalBindingContext.vertexBuffers.find(index) != GlobalBindingContext.vertexBuffers.end()) return;
+		RenderApi::bind_vertex_buffer(buffer, index);
+	}
 
-		gl_utils::bind_vertex_buffer(buffer.m_Buffer, buffer.m_Stride, index, 0);
-
-		GlobalBindingContext.vertexBuffers.insert_or_assign(index, buffer);
+	void Buffer::unbind_vertex(uint32_t index)
+	{
+		RenderApi::unbind_vertex_buffer(index);
 	}
 
 	void Buffer::bind_index(const Buffer &buffer)
@@ -491,27 +354,20 @@ namespace Atlas {
 			return;
 		}
 
-		if (GlobalBindingContext.indexBuffer == buffer) return;
-
-		gl_utils::bind_index_buffer(buffer.m_Buffer);
-
-		GlobalBindingContext.indexBuffer = buffer;
+		RenderApi::bind_index_buffer(buffer);
 	}
 
-	void Buffer::bind_storage(const Buffer &buffer)
+	void Buffer::unbind_index()
 	{
-		CORE_ASSERT(buffer.is_init(), "bind_vertex_buffer: buffer was not initialized!");
+		RenderApi::unbind_index_buffer();
+	}
 
-		if (!(buffer.type() | BufferType::STORAGE)) {
-			CORE_WARN("Buffer::bind_storage: buffer was not initialized as a vertex buffer");
-			return;
-		}
-
-		if (GlobalBindingContext.storageBuffer == buffer) return;
-
-		gl_utils::bind_storage(buffer.m_Buffer);
-
-		GlobalBindingContext.storageBuffer = buffer;
+	void Buffer::map(const Buffer &buffer, std::function<void(void *)> func)
+	{
+		CORE_ASSERT(buffer.type() & (BufferType::UNIFORM | BufferType::VERTEX | BufferType::STORAGE | BufferType::INDEX_U32), "Buffer::map: unsuported buffer type");
+		void *data = glMapNamedBuffer(buffer.m_Buffer->id(), GL_MAP_WRITE_BIT);
+		func(data);
+		glUnmapNamedBuffer(buffer.m_Buffer->id());
 	}
 
 	size_t Buffer::hash() const
@@ -585,12 +441,6 @@ namespace Atlas {
 		return layout;
 	}
 
-	//void VertexLayout::push(uint32_t count, uint32_t gl_type, uint32_t offset)
-	//{
-	//	CORE_ASSERT(m_Layout, "VertexLayout::push: buffer was not initialized!");
-	//	m_Layout->push_attrib(count, gl_type, offset, m_BufferIndx);
-	//}
-
 	void VertexLayout::push(VertexAttribute attribute, uint32_t offset)
 	{
 		CORE_ASSERT(m_Layout, "VertexLayout::push: buffer was not initialized!");
@@ -607,12 +457,12 @@ namespace Atlas {
 	void VertexLayout::bind(const VertexLayout &layout)
 	{
 		CORE_ASSERT(layout.is_init(), "VertexLayout::bind: buffer was not initialized!");
+		RenderApi::bind_vertexlayout(layout);
+	}
 
-		if (GlobalBindingContext.layout == layout) return;
-
-		layout.m_Layout->bind();
-
-		GlobalBindingContext.layout = layout;
+	void VertexLayout::unbind()
+	{
+		RenderApi::unbind_vertexlayout();
 	}
 
 	size_t VertexLayout::hash() const
@@ -635,18 +485,23 @@ namespace Atlas {
 	void Shader::bind(const Shader &shader)
 	{
 		CORE_ASSERT(shader.is_init(), "Shader::bind: Shader was not initialized!");
+		CORE_ASSERT(shader.m_Layout.is_init(), "Shader::bind: VertexLayout was not initialized!");
 
-		if (GlobalBindingContext.shader == shader) return;
+		if (s_GlobalBindingContext.shader == shader) return;
 
 		for (auto &pair : shader.m_UniformBuffers) {
 			const Buffer &buff = pair.second;
-			gl_utils::bind_uniform_buffer(shader.m_Shader->get_block_binding(pair.first), pair.second.m_Buffer);
+			gl_utils::bind_uniform_buffer(pair.second.m_Buffer, shader.m_Shader->get_uniform_block_binding(pair.first));
 		}
 
-		VertexLayout::bind(shader.m_Layout);
-		gl_utils::bind_shader(shader.m_Shader);
+		for (auto &pair : shader.m_StorageBuffers) {
+			const Buffer &buff = pair.second;
+			gl_utils::bind_storage_buffer(pair.second.m_Buffer, shader.m_Shader->get_storage_block_binding(pair.first));
+		}
 
-		GlobalBindingContext.shader = shader;
+		RenderApi::bind_vertexlayout(shader.m_Layout);
+		RenderApi::bind_shader(shader);
+
 	}
 
 	void Shader::unbind()
@@ -664,10 +519,10 @@ namespace Atlas {
 	}
 
 #define IMPL_SHADER_FUNC(TYPE, FUNC_NAME) \
-	void Shader::set(const char *name, TYPE value) \
+	void Shader::set(const std::string &name, TYPE value) \
 	{ \
 		CORE_ASSERT(m_Shader, "Shader::set_int: Shader was not initialized!"); \
-		m_Shader->FUNC_NAME(name, value); \
+		m_Shader->FUNC_NAME(name.c_str(), value); \
 	}
 
 	IMPL_SHADER_FUNC(int32_t, set_int);
@@ -688,18 +543,34 @@ namespace Atlas {
 	IMPL_SHADER_FUNC(const glm::mat3 &, set_mat3);
 	IMPL_SHADER_FUNC(const glm::mat4 &, set_mat4);
 
-	void Shader::set(const char *name, const Buffer &buffer)
+	void Shader::set(const std::string &name, const Buffer &buffer)
 	{
-		CORE_ASSERT(buffer.m_Types | BufferType::UNIFORM, "Shader::set: buffer was not initialized as unifrom buffer!");
-		m_UniformBuffers.insert_or_assign(name, buffer);
+		CORE_ASSERT(buffer.m_Types & (BufferType::UNIFORM | BufferType::STORAGE), "Shader::set: buffer was not initialized as unifrom / storage buffer!");
+
+		if (buffer.m_Types & BufferType::UNIFORM) {
+			if (m_Shader->get_uniform_block_binding(name) == -1) CORE_WARN("Shader::set: could not find Uniform Buffer: {}", name);
+			m_UniformBuffers.insert_or_assign(name, buffer);
+		}
+		else if (buffer.m_Types & BufferType::STORAGE) {
+			if (m_Shader->get_storage_block_binding(name) == -1) CORE_WARN("Shader::set: could not find Storage Buffer: {}", name);
+			m_StorageBuffers.insert_or_assign(name, buffer);
+		}
 	}
 
 	Buffer &Shader::get_uniform_buffer(const char *name)
 	{
 		auto it = m_UniformBuffers.find(name);
-		CORE_ASSERT(it != m_UniformBuffers.end(), "Shader::get_uniform_buffer: could not find buffer: {}", name);
+		CORE_ASSERT(it != m_UniformBuffers.end(), "Shader::get_uniform_buffer: could not find buffer");
 
-		return m_UniformBuffers.at(name);
+		return it->second;
+	}
+
+	Buffer &Shader::get_storage_buffer(const char *name)
+	{
+		auto it = m_StorageBuffers.find(name);
+		CORE_ASSERT(it != m_StorageBuffers.end(), "Shader::get_uniform_buffer: could not find buffer");
+
+		return it->second;
 	}
 
 	size_t Shader::hash() const
@@ -750,4 +621,95 @@ namespace Atlas {
 	{
 		return !(s1 == s2);
 	}
+
+
+	void RenderApi::bind_shader(const Shader &shader)
+	{
+		if (s_GlobalBindingContext.shader == shader) return;
+		s_GlobalBindingContext.shader = shader;
+		gl_utils::bind_shader(shader.m_Shader);
+	}
+
+	void RenderApi::unbind_shader()
+	{
+		s_GlobalBindingContext.shader = Shader();
+		glUseProgram(0);
+	}
+
+	void RenderApi::bind_vertex_buffer(const Buffer &buffer, uint32_t index)
+	{
+		auto it = s_GlobalBindingContext.vertexBuffers.find(index);
+		if (it != s_GlobalBindingContext.vertexBuffers.end()) return;
+		s_GlobalBindingContext.vertexBuffers.insert_or_assign(index, buffer);
+		gl_utils::bind_vertex_buffer(buffer.m_Buffer, buffer.m_Stride, index);
+	}
+
+	void RenderApi::unbind_vertex_buffer(uint32_t index)
+	{
+		s_GlobalBindingContext.vertexBuffers.erase(index);
+		glBindVertexBuffer(index, 0, 0, 0);
+	}
+
+	void RenderApi::bind_index_buffer(const Buffer &buffer)
+	{
+		if (s_GlobalBindingContext.indexBuffer == buffer) return;
+		s_GlobalBindingContext.indexBuffer = buffer;
+		gl_utils::bind_index_buffer(buffer.m_Buffer);
+	}
+
+	void RenderApi::unbind_index_buffer()
+	{
+		glBindBuffer(GL_INDEX_BUFFER, 0);
+	}
+
+	void RenderApi::bind_framebuffer(const Framebuffer &fb)
+	{
+		if (s_GlobalBindingContext.framebuffer == fb) return;
+		s_GlobalBindingContext.framebuffer = fb;
+		fb.m_Framebuffer->bind();
+	}
+
+	void RenderApi::unbind_framebuffer()
+	{
+		s_GlobalBindingContext.framebuffer = Framebuffer();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
+	void RenderApi::bind_vertexlayout(const VertexLayout &layout)
+	{
+		if (s_GlobalBindingContext.layout == layout) return;
+		s_GlobalBindingContext.layout = layout;
+		layout.m_Layout->bind();
+	}
+
+	void RenderApi::unbind_vertexlayout()
+	{
+		glBindVertexArray(0);
+	}
+
+	void RenderApi::bind_texture(const Texture2D &texture, uint32_t index)
+	{
+		auto it = s_GlobalBindingContext.textures.find(index);
+		if (it != s_GlobalBindingContext.textures.end()) return;
+		s_GlobalBindingContext.textures.insert_or_assign(index, texture);
+		texture.m_Texture->bind(index);
+	}
+
+	void RenderApi::unbind_texture(uint32_t index)
+	{
+		s_GlobalBindingContext.textures.erase(index);
+		glActiveTexture(GL_TEXTURE0 + index);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
+	Buffer &RenderApi::get_bound_index_buffer()
+	{
+		return s_GlobalBindingContext.indexBuffer;
+	}
+
+	Buffer &RenderApi::get_bound_vertex_buffer(uint32_t index)
+	{
+		return s_GlobalBindingContext.vertexBuffers.at(index);
+	}
+
 }
