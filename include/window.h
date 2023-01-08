@@ -30,7 +30,7 @@ namespace Atlas {
 		double get_time();
 		bool should_close() const;
 
-		void capture_mouse(bool enabled) const;
+		void capture_mouse(bool enabled);
 
 		bool is_key_pressed(Atlas::KeyCode key);
 		bool is_mouse_button_pressed(int button);
@@ -40,6 +40,7 @@ namespace Atlas {
 		const EventCallbackFn &get_event_callback() const;
 
 		std::pair<float, float> get_mouse_pos() const;
+		std::pair<float, float> get_window_pos() const;
 		inline GLFWwindow *get_native_window() const { return m_Window; }
 
 	private:
@@ -50,6 +51,8 @@ namespace Atlas {
 		std::string m_Title;
 		uint32_t m_Width{ 0 };
 		uint32_t m_Height{ 0 };
+
+		bool m_CaptureMouse{ false };
 
 		EventCallbackFn m_EventCallBackFn;
 	};

@@ -35,6 +35,8 @@ struct Vertex {
 
 namespace gl_utils {
 
+	static uint32_t s_GlobalVAO{ 0 };
+
 	void create_texture2D(uint32_t width, uint32_t height, GLenum format, bool mipmap, GLenum minFilter, GLenum magFilter, uint32_t *texture) {
 		uint32_t id;
 		glCreateTextures(GL_TEXTURE_2D, 1, &id);
@@ -63,7 +65,7 @@ namespace gl_utils {
 		*texture = id;
 	}
 
-	void set_texture2D_data(uint32_t texture, uint32_t width, uint32_t height, GLenum dataFormat, void *data) {
+	void set_texture2D_data(uint32_t texture, uint32_t width, uint32_t height, GLenum dataFormat, const void *data) {
 		if (!texture) {
 			CORE_WARN("Texture2D: can not set data, Texture is not initialized!");
 			return;
@@ -265,7 +267,7 @@ namespace gl_utils {
 		glDeleteTextures(1, &m_ID);
 	}
 
-	void GLTexture2D::set_data(void *data, GLenum format)
+	void GLTexture2D::set_data(const void *data, GLenum format)
 	{
 		set_texture2D_data(m_ID, m_Width, m_Height, format, data);
 	}
@@ -552,25 +554,44 @@ namespace gl_utils {
 
 	GLVertexLayout::GLVertexLayout()
 	{
-		glCreateVertexArrays(1, &m_VAO);
+		//glCreateVertexArrays(1, &s_GlobalVAO);
 	}
 
 	GLVertexLayout::~GLVertexLayout()
 	{
-		glDeleteVertexArrays(1, &m_VAO);
+		//glDeleteVertexArrays(1, &s_GlobalVAO);
 	}
 
 	void GLVertexLayout::push_attrib(uint32_t count, GLenum type, uint32_t offset, uint32_t bufferIndx)
 	{
-		glEnableVertexArrayAttrib(m_VAO, m_AttribIndx);
-		glVertexArrayAttribFormat(m_VAO, m_AttribIndx, count, type, false, offset);
-		glVertexArrayAttribBinding(m_VAO, m_AttribIndx, bufferIndx);
+		//glEnableVertexArrayAttrib(s_GlobalVAO, m_AttribIndx);
+		//glVertexArrayAttribFormat(s_GlobalVAO, m_AttribIndx, count, type, false, offset);
+		//glVertexArrayAttribBinding(s_GlobalVAO, m_AttribIndx, bufferIndx);
+		AttribInfo info{};
+		info.count = count;
+		info.type = type;
+		info.offset = offset;
+		info.bufferIndex = bufferIndx;
+		info.attribIndex = m_AttribIndx;
+		m_Attributes.push_back(info);
+
 		m_AttribIndx++;
 	}
 
 	void GLVertexLayout::bind()
 	{
-		glBindVertexArray(m_VAO);
+		GLint maxAttribs;
+		glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttribs);
+
+		for (GLint i = 0; i < maxAttribs; i++) {
+			glDisableVertexArrayAttrib(s_GlobalVAO, i);
+		}
+
+		for (auto &attrib : m_Attributes) {
+			glEnableVertexArrayAttrib(s_GlobalVAO, attrib.attribIndex);
+			glVertexArrayAttribFormat(s_GlobalVAO, attrib.attribIndex, attrib.count, attrib.type, false, attrib.offset);
+			glVertexArrayAttribBinding(s_GlobalVAO, attrib.attribIndex, attrib.bufferIndex);
+		}
 	}
 
 	void gl_debug_msg(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
@@ -604,6 +625,9 @@ namespace gl_utils {
 		glEnable(GL_DEBUG_OUTPUT);
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
 		glDebugMessageCallback(gl_debug_msg, 0);
+
+		glCreateVertexArrays(1, &s_GlobalVAO);
+		glBindVertexArray(s_GlobalVAO);
 
 		CORE_TRACE("OpenGL Info:");
 		CORE_TRACE(" vendor:	{}", (const char *)glGetString(GL_VENDOR));

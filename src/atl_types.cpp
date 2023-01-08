@@ -11,6 +11,12 @@ void ImGui::Image(const Atlas::Texture2D &texture, const ImVec2 &size, const ImV
 	ImGui::Image(reinterpret_cast<void *>(ptr), size, uv0, uv1, tint_col, border_col);
 }
 
+bool ImGui::ImageButton(const Atlas::Texture2D &texture, const ImVec2 &size, const ImVec2 &uv0, const ImVec2 &uv1, int frame_padding, const ImVec4 &bg_col, const ImVec4 &tint_col)
+{
+	uintptr_t ptr = texture.m_Texture->id();
+	return ImGui::ImageButton(reinterpret_cast<void *>(ptr), size, uv0, uv1, frame_padding, bg_col, tint_col);
+}
+
 namespace Atlas {
 
 	struct BindingContext {
@@ -26,7 +32,7 @@ namespace Atlas {
 	static BindingContext s_GlobalBindingContext;
 
 	uint32_t to_rgb(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-		uint32_t result = (a << 24) | (r << 16) | (g << 8) | b;
+		uint32_t result = (a << 24) | (b << 16) | (g << 8) | r;
 		return result;
 	}
 
@@ -37,11 +43,28 @@ namespace Atlas {
 	Color::Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 		: m_Data(to_rgb(r, g, b, a)) {};
 	Color::Color(uint8_t r, uint8_t g, uint8_t b)
-		: m_Data(to_rgb(r, g, b, 255)) {};
+		: m_Data(to_rgb(r, g, b, 255)) {}
+
+	Color Color::from_normalized(glm::vec3 val)
+	{
+		uint8_t r = static_cast<uint8_t>(val.r * 255);
+		uint8_t g = static_cast<uint8_t>(val.g * 255);
+		uint8_t b = static_cast<uint8_t>(val.b * 255);
+		return Color(r, g, b);
+	}
+
+	Color Color::from_normalized(glm::vec4 val)
+	{
+		uint8_t r = static_cast<uint8_t>(val.r * 255);
+		uint8_t g = static_cast<uint8_t>(val.g * 255);
+		uint8_t b = static_cast<uint8_t>(val.b * 255);
+		uint8_t a = static_cast<uint8_t>(val.a * 255);
+		return Color(r, g, b, a);
+	}
 
 	inline uint8_t Color::red() const
 	{
-		return m_Data >> 16 & 0xff;
+		return m_Data & 0xff;
 	}
 
 	inline uint8_t Color::green() const
@@ -51,7 +74,7 @@ namespace Atlas {
 
 	inline uint8_t Color::blue() const
 	{
-		return m_Data & 0xff;
+		return m_Data >> 16 & 0xff;
 	}
 
 	inline uint8_t Color::alpha() const
@@ -169,15 +192,20 @@ namespace Atlas {
 	void Texture2D::bind(const Texture2D &texture, uint32_t indx)
 	{
 		CORE_ASSERT(texture.is_init(), "Texture2D::bind: texture was not initialized!");
-		RenderApi::bind_texture(texture, indx);
+		auto it = s_GlobalBindingContext.textures.find(indx);
+		if (it != s_GlobalBindingContext.textures.end()) return;
+		s_GlobalBindingContext.textures.insert_or_assign(indx, texture);
+		texture.m_Texture->bind(indx);
 	}
 
 	void Texture2D::unbind(uint32_t index)
 	{
-		RenderApi::unbind_texture(index);
+		s_GlobalBindingContext.textures.erase(index);
+		glActiveTexture(GL_TEXTURE0 + index);
+		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-	void Texture2D::set_data(Color *data) const
+	void Texture2D::set_data(const Color *data) const
 	{
 		CORE_ASSERT(m_Texture, "Texture2D::set_data: texture was not initialized!");
 		m_Texture->set_data(data, color_format_to_int_gl_enum(m_Format));
@@ -302,12 +330,15 @@ namespace Atlas {
 	void Framebuffer::bind(const Framebuffer &framebuffer)
 	{
 		CORE_ASSERT(framebuffer.is_init(), "Framebuffer::bind: framebuffer was not initialized");
-		RenderApi::bind_framebuffer(framebuffer);
+		if (s_GlobalBindingContext.framebuffer == framebuffer) return;
+		s_GlobalBindingContext.framebuffer = framebuffer;
+		framebuffer.m_Framebuffer->bind();
 	}
 
 	void Framebuffer::unbind()
 	{
-		RenderApi::unbind_framebuffer();
+		s_GlobalBindingContext.framebuffer = Framebuffer();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
 	Framebuffer Framebuffer::empty()
@@ -337,12 +368,16 @@ namespace Atlas {
 			return;
 		}
 
-		RenderApi::bind_vertex_buffer(buffer, index);
+		auto it = s_GlobalBindingContext.vertexBuffers.find(index);
+		if (it != s_GlobalBindingContext.vertexBuffers.end()) return;
+		s_GlobalBindingContext.vertexBuffers.insert_or_assign(index, buffer);
+		gl_utils::bind_vertex_buffer(buffer.m_Buffer, buffer.m_Stride, index);
 	}
 
 	void Buffer::unbind_vertex(uint32_t index)
 	{
-		RenderApi::unbind_vertex_buffer(index);
+		s_GlobalBindingContext.vertexBuffers.erase(index);
+		glBindVertexBuffer(index, 0, 0, 0);
 	}
 
 	void Buffer::bind_index(const Buffer &buffer)
@@ -354,12 +389,14 @@ namespace Atlas {
 			return;
 		}
 
-		RenderApi::bind_index_buffer(buffer);
+		if (s_GlobalBindingContext.indexBuffer == buffer) return;
+		s_GlobalBindingContext.indexBuffer = buffer;
+		gl_utils::bind_index_buffer(buffer.m_Buffer);
 	}
 
 	void Buffer::unbind_index()
 	{
-		RenderApi::unbind_index_buffer();
+		glBindBuffer(GL_INDEX_BUFFER, 0);
 	}
 
 	void Buffer::map(const Buffer &buffer, std::function<void(void *)> func)
@@ -375,7 +412,7 @@ namespace Atlas {
 		return std::hash<void *>()(m_Buffer.get());
 	}
 
-	Buffer Buffer::create(BufferTypes types, void *data, size_t size, BufferUsage usage, size_t stride)
+	Buffer Buffer::create(BufferTypeBits types, void *data, size_t size, BufferUsage usage, size_t stride)
 	{
 		BufferCreateInfo info{};
 		info.size = size;
@@ -411,10 +448,23 @@ namespace Atlas {
 		return Buffer(info);
 	}
 
-	Buffer Buffer::index(uint32_t *data, size_t count, BufferUsage usage) {
+	Buffer Buffer::index(uint32_t *data, size_t count, BufferUsage usage)
+	{
 		BufferCreateInfo info{};
 		info.size = sizeof(uint32_t) * count;
 		info.data = (void *)data;
+		info.types = BufferType::INDEX_U32;
+		info.usage = usage;
+		info.stride = sizeof(uint32_t);
+
+		return Buffer(info);
+	}
+
+	Buffer Buffer::index(size_t count, BufferUsage usage)
+	{
+		BufferCreateInfo info{};
+		info.size = sizeof(uint32_t) * count;
+		info.data = nullptr;
 		info.types = BufferType::INDEX_U32;
 		info.usage = usage;
 		info.stride = sizeof(uint32_t);
@@ -457,12 +507,15 @@ namespace Atlas {
 	void VertexLayout::bind(const VertexLayout &layout)
 	{
 		CORE_ASSERT(layout.is_init(), "VertexLayout::bind: buffer was not initialized!");
-		RenderApi::bind_vertexlayout(layout);
+
+		if (s_GlobalBindingContext.layout == layout) return;
+		s_GlobalBindingContext.layout = layout;
+		layout.m_Layout->bind();
 	}
 
 	void VertexLayout::unbind()
 	{
-		RenderApi::unbind_vertexlayout();
+		//glBindVertexArray(0);
 	}
 
 	size_t VertexLayout::hash() const
@@ -488,6 +541,8 @@ namespace Atlas {
 		CORE_ASSERT(shader.m_Layout.is_init(), "Shader::bind: VertexLayout was not initialized!");
 
 		if (s_GlobalBindingContext.shader == shader) return;
+		s_GlobalBindingContext.shader = shader;
+		gl_utils::bind_shader(shader.m_Shader);
 
 		for (auto &pair : shader.m_UniformBuffers) {
 			const Buffer &buff = pair.second;
@@ -499,14 +554,15 @@ namespace Atlas {
 			gl_utils::bind_storage_buffer(pair.second.m_Buffer, shader.m_Shader->get_storage_block_binding(pair.first));
 		}
 
-		RenderApi::bind_vertexlayout(shader.m_Layout);
-		RenderApi::bind_shader(shader);
-
+		VertexLayout::bind(shader.m_Layout);
+		//Render::bind_vertexlayout(shader.m_Layout);
 	}
 
 	void Shader::unbind()
 	{
+		s_GlobalBindingContext.shader = Shader();
 		glUseProgram(0);
+		VertexLayout::unbind();
 	}
 
 	Shader Shader::load(const char *vertexFile, const char *fragFile, const VertexLayout &layout)
@@ -622,92 +678,12 @@ namespace Atlas {
 		return !(s1 == s2);
 	}
 
-
-	void RenderApi::bind_shader(const Shader &shader)
-	{
-		if (s_GlobalBindingContext.shader == shader) return;
-		s_GlobalBindingContext.shader = shader;
-		gl_utils::bind_shader(shader.m_Shader);
-	}
-
-	void RenderApi::unbind_shader()
-	{
-		s_GlobalBindingContext.shader = Shader();
-		glUseProgram(0);
-	}
-
-	void RenderApi::bind_vertex_buffer(const Buffer &buffer, uint32_t index)
-	{
-		auto it = s_GlobalBindingContext.vertexBuffers.find(index);
-		if (it != s_GlobalBindingContext.vertexBuffers.end()) return;
-		s_GlobalBindingContext.vertexBuffers.insert_or_assign(index, buffer);
-		gl_utils::bind_vertex_buffer(buffer.m_Buffer, buffer.m_Stride, index);
-	}
-
-	void RenderApi::unbind_vertex_buffer(uint32_t index)
-	{
-		s_GlobalBindingContext.vertexBuffers.erase(index);
-		glBindVertexBuffer(index, 0, 0, 0);
-	}
-
-	void RenderApi::bind_index_buffer(const Buffer &buffer)
-	{
-		if (s_GlobalBindingContext.indexBuffer == buffer) return;
-		s_GlobalBindingContext.indexBuffer = buffer;
-		gl_utils::bind_index_buffer(buffer.m_Buffer);
-	}
-
-	void RenderApi::unbind_index_buffer()
-	{
-		glBindBuffer(GL_INDEX_BUFFER, 0);
-	}
-
-	void RenderApi::bind_framebuffer(const Framebuffer &fb)
-	{
-		if (s_GlobalBindingContext.framebuffer == fb) return;
-		s_GlobalBindingContext.framebuffer = fb;
-		fb.m_Framebuffer->bind();
-	}
-
-	void RenderApi::unbind_framebuffer()
-	{
-		s_GlobalBindingContext.framebuffer = Framebuffer();
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	}
-
-	void RenderApi::bind_vertexlayout(const VertexLayout &layout)
-	{
-		if (s_GlobalBindingContext.layout == layout) return;
-		s_GlobalBindingContext.layout = layout;
-		layout.m_Layout->bind();
-	}
-
-	void RenderApi::unbind_vertexlayout()
-	{
-		glBindVertexArray(0);
-	}
-
-	void RenderApi::bind_texture(const Texture2D &texture, uint32_t index)
-	{
-		auto it = s_GlobalBindingContext.textures.find(index);
-		if (it != s_GlobalBindingContext.textures.end()) return;
-		s_GlobalBindingContext.textures.insert_or_assign(index, texture);
-		texture.m_Texture->bind(index);
-	}
-
-	void RenderApi::unbind_texture(uint32_t index)
-	{
-		s_GlobalBindingContext.textures.erase(index);
-		glActiveTexture(GL_TEXTURE0 + index);
-		glBindTexture(GL_TEXTURE_2D, 0);
-	}
-
-	Buffer &RenderApi::get_bound_index_buffer()
+	Buffer &Render::get_bound_index_buffer()
 	{
 		return s_GlobalBindingContext.indexBuffer;
 	}
 
-	Buffer &RenderApi::get_bound_vertex_buffer(uint32_t index)
+	Buffer &Render::get_bound_vertex_buffer(uint32_t index)
 	{
 		return s_GlobalBindingContext.vertexBuffers.at(index);
 	}

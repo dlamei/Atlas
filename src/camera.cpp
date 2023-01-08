@@ -48,6 +48,7 @@ namespace Atlas {
 
 	void OrthographicCameraController::on_update(float timestep)
 	{
+
 		//if (Input::IsKeyPressed(ATL_KEY_D))
 		if (Application::is_key_pressed(KeyCode::D))
 		{
@@ -161,11 +162,11 @@ namespace Atlas {
 	{
 		if (!Application::is_mouse_pressed(1)) return false;
 
-		if (firstMouseMove)
+		if (m_FirstMouseMove)
 		{
 			m_PMouseX = e.mouseX;
 			m_PMouseY = e.mouseY;
-			firstMouseMove = false;
+			m_FirstMouseMove = false;
 		}
 
 		float xOffset = e.mouseX - m_PMouseX;
@@ -196,9 +197,11 @@ namespace Atlas {
 
 	bool PerspectiveCameraController::on_mouse_released(MouseButtonReleasedEvent &e)
 	{
-		Window &window = Application::get_window();
-		window.capture_mouse(false);
-		firstMouseMove = true;
+		if (e.button == 1) {
+			Window &window = Application::get_window();
+			window.capture_mouse(false);
+			m_FirstMouseMove = true;
+		}
 		return false;
 	}
 
@@ -213,6 +216,43 @@ namespace Atlas {
 
 	void PerspectiveCameraController::on_update(float ts)
 	{
+		Window &window = Application::get_window();
+
+		if (Application::is_mouse_pressed(1)) {
+			window.capture_mouse(true);
+		}
+		else {
+			window.capture_mouse(false);
+			m_FirstMouseMove = true;
+		}
+
+		auto mouse = Application::get_mouse();
+
+		//CORE_TRACE("{}, {}", mouse.x, mouse.y);
+
+		if (m_FirstMouseMove)
+		{
+			m_PMouseX = mouse.x;
+			m_PMouseY = mouse.y;
+			m_FirstMouseMove = false;
+		}
+
+		float xOffset = mouse.x - m_PMouseX;
+		float yOffset = m_PMouseY - mouse.y;
+		m_PMouseX = mouse.x;
+		m_PMouseY = mouse.y;
+
+		m_Yaw += xOffset * m_CamearSensitivity;
+		m_Pitch += yOffset * m_CamearSensitivity;
+
+		m_Pitch = std::clamp(m_Pitch, -89.0f, 89.0f);
+
+		m_CameraDirection.x = cos(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
+		m_CameraDirection.y = sin(glm::radians(m_Pitch));
+		m_CameraDirection.z = sin(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
+
+		m_Camera.set_front(glm::normalize(m_CameraDirection));
+
 		bool updated = false;
 
 		if (Application::is_key_pressed(KeyCode::LEFT_SHIFT))
@@ -269,10 +309,11 @@ namespace Atlas {
 
 	void PerspectiveCameraController::on_event(Event &e)
 	{
-		EventDispatcher dispatcher(e);
-		dispatcher.dispatch<MouseMovedEvent>(BIND_EVENT_FN(PerspectiveCameraController::on_mouse_moved))
-			.dispatch<MouseButtonPressedEvent>(BIND_EVENT_FN(PerspectiveCameraController::on_mouse_pressed))
-			.dispatch<MouseButtonReleasedEvent>(BIND_EVENT_FN(PerspectiveCameraController::on_mouse_released));
+		//EventDispatcher dispatcher(e);
+		//dispatcher
+			//	.dispatch<MouseMovedEvent>(BIND_EVENT_FN(PerspectiveCameraController::on_mouse_moved));
+			//	.dispatch<MouseButtonPressedEvent>(BIND_EVENT_FN(PerspectiveCameraController::on_mouse_pressed))
+			//	.dispatch<MouseButtonReleasedEvent>(BIND_EVENT_FN(PerspectiveCameraController::on_mouse_released));
 	}
 
 	void PerspectiveCameraController::set_position(const glm::vec3 &pos)

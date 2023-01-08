@@ -195,6 +195,13 @@ namespace Atlas {
 		return { (float)mouseX, (float)mouseY };
 	}
 
+	std::pair<float, float> Window::get_window_pos() const
+	{
+		int posX, posY;
+		glfwGetWindowPos(m_Window, &posX, &posY);
+		return { (float)posX, (float)posY };
+	}
+
 	double Window::get_time()
 	{
 		return glfwGetTime();
@@ -206,12 +213,17 @@ namespace Atlas {
 		m_EventCallBackFn = callback;
 	}
 
-	void Window::capture_mouse(bool enabled) const {
+	void Window::capture_mouse(bool enabled) {
+		if (enabled == m_CaptureMouse) return;
+
 		if (enabled) {
 			glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			m_CaptureMouse = true;
 		}
-		else
+		else {
 			glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			m_CaptureMouse = false;
+		}
 	}
 
 } // namespace Atlas

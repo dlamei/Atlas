@@ -4,7 +4,7 @@
 
 namespace Atlas {
 
-	namespace RenderApi {
+	namespace Render {
 
 		struct CachedFramebuffer {
 			Framebuffer framebuffer;
@@ -57,7 +57,7 @@ namespace Atlas {
 		void begin(const Texture2D &color) {
 
 			FramebufferCreateInfo fbInfo{};
-			fbInfo.depthAttachments = { color };
+			fbInfo.colorAttachments = { color };
 
 			Framebuffer fb = get_framebuffer(fbInfo);
 			begin(fb);
@@ -122,21 +122,21 @@ namespace Atlas {
 			Framebuffer::unbind();
 		}
 
-		void draw_indexed()
+		void draw_indexed(size_t size)
 		{
 			auto &indexBuffer = get_bound_index_buffer();
 			if (!indexBuffer.is_init()) {
-				CORE_WARN("RenderApi::draw_indexed: no index buffer was bound");
+				CORE_WARN("Render::draw_indexed: no index buffer was bound");
 				return;
 			}
 
 			auto &vertexBuffer = get_bound_vertex_buffer();
 			if (!vertexBuffer.is_init()) {
-				CORE_WARN("RenderApi::draw_indexed: no vertex buffer was bound");
+				CORE_WARN("Render::draw_indexed: no vertex buffer was bound");
 				return;
 			}
 
-			glDrawElements(GL_TRIANGLES, (int)indexBuffer.size(), GL_UNSIGNED_INT, 0);
+			glDrawElements(GL_TRIANGLES, size, GL_UNSIGNED_INT, 0);
 		}
 
 		void init()

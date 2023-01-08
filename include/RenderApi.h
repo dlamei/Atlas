@@ -4,7 +4,7 @@
 
 namespace Atlas {
 
-	namespace RenderApi {
+	namespace Render {
 
 		void frame_start();
 		void frame_end();
@@ -18,7 +18,7 @@ namespace Atlas {
 		void begin(const Atlas::Framebuffer &frameBuffer);
 		void end();
 
-		void draw_indexed();
+		void draw_indexed(size_t size);
 
 		void init();
 		void resize_viewport(uint32_t width, uint32_t height);

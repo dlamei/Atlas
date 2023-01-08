@@ -50,8 +50,13 @@ namespace Atlas {
 		static Window &get_window();
 		static Application *get_instance();
 		static glm::vec2 get_mouse();
+		static glm::vec2 get_window_pos();
 		static bool is_key_pressed(KeyCode key);
 		static bool is_mouse_pressed(int button);
+		static bool is_viewport_focused();
+		static bool is_viewport_hovered();
+		static Texture2D &get_viewport_color();
+		static Texture2D &get_viewport_depth();
 
 		void push_layer(Ref<Layer> layer);
 
@@ -63,6 +68,7 @@ namespace Atlas {
 		void on_event(Event &event);
 		bool on_window_resized(WindowResizedEvent &e);
 		bool on_viewport_resized(ViewportResizedEvent &e);
+		bool on_mouse_moved(MouseMovedEvent &e);
 
 		void render_viewport();
 
@@ -78,14 +84,11 @@ namespace Atlas {
 
 		Texture2D m_ColorBuffer;
 		Texture2D m_DepthBuffer;
-		Shader m_Shader;
-		Buffer m_VertexBuffer;
-		Buffer m_IndexBuffer;
-		Texture2D m_Texture;
-
-		OrthographicCameraController m_CameraController;
 
 		glm::vec2 m_ViewportSize;
+		bool m_ViewportFocus;
+		bool m_ViewportHovered;
+		glm::vec2 m_ViewportMousePos;
 
 		static Application *s_Instance;
 	};

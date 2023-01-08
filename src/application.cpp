@@ -9,6 +9,8 @@
 
 #include "RenderApi.h"
 
+#include "Render2D.h"
+
 struct Vertex {
 	glm::vec3 pos;
 	glm::vec2 uv;
@@ -30,7 +32,7 @@ namespace Atlas {
 		m_Window = make_scope<Window>(info);
 		m_Window->set_event_callback(BIND_EVENT_FN(Application::on_event));
 
-		RenderApi::init();
+		Render::init();
 
 		m_ImGuiLayer = make_ref<ImGuiLayer>();
 		push_layer(m_ImGuiLayer);
@@ -38,41 +40,6 @@ namespace Atlas {
 		m_ColorBuffer = Texture2D::color((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 		m_DepthBuffer = Texture2D::depth((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 
-		m_Texture = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
-
-		{
-			VertexLayout layout = VertexLayout::from(&Vertex::pos, &Vertex::uv);
-			m_Shader = Shader::load("assets/shaders/default.vert", "assets/shaders/default.frag", layout);
-			m_Shader.set("tex", 0);
-
-			Buffer cameraBuffer = Buffer::uniform(glm::ortho(-1, 1, -1, 1), BufferUsage::DYNAMIC);
-			m_Shader.set("CameraBuffer", cameraBuffer);
-		}
-
-		{
-			Vertex vertices[] =
-			{
-				{{0, 0, 0}, {0, 0}},
-				{{0, 1, 0}, {0, 1}},
-				{{1, 1, 0}, {1, 1}},
-				{{1, 0, 0}, {1, 0}},
-			};
-
-			uint32_t indices[] =
-			{
-				0, 1, 2,
-				0, 2, 3
-			};
-
-			m_VertexBuffer = Buffer::vertex(vertices, 4);
-			m_IndexBuffer = Buffer::index(indices, 6);
-		}
-
-		//RenderApi::enable_clear_color(false);
-		//RenderApi::enable_clear_depth(false);
-		RenderApi::clear_color({ 60, 5, 45 });
-
-		//m_CameraController.set_position({ 0, 0, 3 });
 	}
 
 	Application::~Application()
@@ -92,7 +59,7 @@ namespace Atlas {
 		m_LastFrameTime = (float)m_Window->get_time();
 
 		while (!m_Window->should_close()) {
-			RenderApi::frame_start();
+			Render::frame_start();
 
 			m_Window->on_update();
 			if (m_Window->is_minimized()) continue;
@@ -100,7 +67,7 @@ namespace Atlas {
 			ATL_FRAME("MainThread");
 			update();
 
-			RenderApi::frame_end();
+			Render::frame_end();
 		}
 	}
 
@@ -115,23 +82,8 @@ namespace Atlas {
 		for (Event e : m_QueuedEvents) on_event(e);
 		m_QueuedEvents.clear();
 
-		m_CameraController.on_update(timestep);
 		for (auto &layer : m_LayerStack) layer->on_update(timestep);
 		for (auto &layer : m_LayerStack) layer->on_imgui();
-
-		m_Shader.get_uniform_buffer("CameraBuffer")
-			.set_data(m_CameraController.get_camera().get_view_projection());
-
-		RenderApi::begin(m_ColorBuffer, m_DepthBuffer);
-
-		Shader::bind(m_Shader);
-		Texture2D::bind(m_Texture);
-
-		Buffer::bind_vertex(m_VertexBuffer);
-		Buffer::bind_index(m_IndexBuffer);
-
-		RenderApi::draw_indexed();
-		RenderApi::end();
 
 		render_viewport();
 
@@ -147,22 +99,38 @@ namespace Atlas {
 	{
 		ATL_EVENT();
 
+		ImGui::SetNextWindowViewport(ImGui::GetMainViewport()->ID);
+
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::Begin("Viewport");
 		ImGui::PopStyleVar();
 
-		auto viewportMinRegion = ImGui::GetWindowContentRegionMin();
-		auto viewportMaxRegion = ImGui::GetWindowContentRegionMax();
-		auto viewportOffset = ImGui::GetWindowPos();
-		glm::vec2 viewportBounds[2]{};
-		viewportBounds[0] = { viewportMinRegion.x + viewportOffset.x, viewportMinRegion.y + viewportOffset.y };
-		viewportBounds[1] = { viewportMaxRegion.x + viewportOffset.x, viewportMaxRegion.y + viewportOffset.y };
-		auto viewportSize = viewportBounds[1] - viewportBounds[0];
+		ImGui::BeginChild("Viewport");
 
-		ImGui::Image(m_ColorBuffer, { viewportSize.x, viewportSize.y });
+		auto viewportSize = ImGui::GetWindowSize();
+
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0, 0, 0, 0 });
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0, 0, 0, 0 });
+		ImGui::PushStyleColor(ImGuiCol_Button, { 0, 0, 0, 0 });
+		ImGui::ImageButton(m_ColorBuffer, { viewportSize.x, viewportSize.y }, { 0, 1 }, { 1, 0 }, 0);
+		ImGui::PopStyleColor();
+		ImGui::PopStyleColor();
+		ImGui::PopStyleColor();
+
+		m_ViewportFocus = ImGui::IsItemFocused();
+		m_ViewportHovered = ImGui::IsItemHovered();
+
+		ImVec2 windowPosition = ImGui::GetWindowPos();
+		auto [windowRelMousePosX, windowRelMousePosY] = m_Window->get_mouse_pos();
+		auto [windowPosX, windowPosY] = m_Window->get_window_pos();
+
+		ImVec2 mousePositionAbsolute = { windowRelMousePosX + windowPosX, windowRelMousePosY + windowPosY };
+		ImVec2 screenPositionAbsolute = ImGui::GetItemRectMin();
+		ImVec2 mouseRel = mousePositionAbsolute - screenPositionAbsolute;
+		m_ViewportMousePos = { mouseRel.x, mouseRel.y };
+
+		ImGui::EndChild();
 		ImGui::End();
-
-		ImGui::ShowDemoWindow();
 
 		if (viewportSize.x != m_ViewportSize.x || viewportSize.y != m_ViewportSize.y) {
 			Atlas::ViewportResizedEvent event = { (uint32_t)viewportSize.x, (uint32_t)viewportSize.y };
@@ -184,18 +152,45 @@ namespace Atlas {
 
 	glm::vec2 Application::get_mouse()
 	{
-		auto pos = get_instance()->m_Window->get_mouse_pos();
+		return get_instance()->m_ViewportMousePos;
+	}
+
+	glm::vec2 Application::get_window_pos()
+	{
+		auto pos = get_instance()->m_Window->get_window_pos();
 		return { pos.first, pos.second };
 	}
 
 	bool Application::is_key_pressed(KeyCode key)
 	{
+		if (!is_viewport_focused()) return false;
 		return get_instance()->m_Window->is_key_pressed(key);
 	}
 
 	bool Application::is_mouse_pressed(int button)
 	{
+		if (!is_viewport_focused()) return false;
 		return get_instance()->m_Window->is_mouse_button_pressed(button);
+	}
+
+	bool Application::is_viewport_focused()
+	{
+		return get_instance()->m_ViewportFocus;
+	}
+
+	bool Application::is_viewport_hovered()
+	{
+		return get_instance()->m_ViewportHovered;
+	}
+
+	Texture2D &Application::get_viewport_color()
+	{
+		return get_instance()->m_ColorBuffer;
+	}
+
+	Texture2D &Application::get_viewport_depth()
+	{
+		return get_instance()->m_DepthBuffer;
 	}
 
 	void Application::push_layer(Ref<Layer> layer)
@@ -216,17 +211,18 @@ namespace Atlas {
 
 	void Application::on_event(Event &event)
 	{
-		//if (!event.in_category(EventCategoryMouse)) CORE_TRACE("event: {}", event.to_string());
+		if (event.in_category(EventCategory::Input) && !m_ViewportHovered) return;
+
 
 		EventDispatcher(event)
+			.dispatch<MouseMovedEvent>(BIND_EVENT_FN(Application::on_mouse_moved))
 			.dispatch<WindowResizedEvent>(BIND_EVENT_FN(Application::on_window_resized))
 			.dispatch<ViewportResizedEvent>(BIND_EVENT_FN(Application::on_viewport_resized));
 
-		m_CameraController.on_event(event);
+		//m_CameraController.on_event(event);
 
 		for (auto &layer : m_LayerStack) {
 			if (event.handled) break;
-
 			layer->on_event(event);
 		}
 	}
@@ -243,13 +239,20 @@ namespace Atlas {
 	{
 		m_ViewportSize = { e.width, e.height };
 
-		RenderApi::resize_viewport(e.width, e.height);
+		Render::resize_viewport(e.width, e.height);
 
 		if (e.width == 0 || e.height == 0) return false;
 
 		m_ColorBuffer = Texture2D::color(e.width, e.height, TextureFilter::NEAREST);
 		m_DepthBuffer = Texture2D::depth(e.width, e.height, TextureFilter::NEAREST);
 
+		return false;
+	}
+
+	bool Application::on_mouse_moved(MouseMovedEvent &e)
+	{
+		e.mouseX = m_ViewportMousePos.x;
+		e.mouseY = m_ViewportMousePos.y;
 		return false;
 	}
 }

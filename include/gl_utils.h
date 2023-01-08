@@ -40,8 +40,7 @@ namespace gl_utils {
 	};
 
 	void create_texture2D(uint32_t width, uint32_t height, GLenum format, bool mipmap, uint32_t *texture);
-	void set_texture2D_data(uint32_t texture, uint32_t width, uint32_t height, GLenum dataFormat, void *data);
-	bool load_texture2D(const char *filePath, uint32_t *texture);
+	void set_texture2D_data(uint32_t texture, uint32_t width, uint32_t height, GLenum dataFormat, const void *data);
 
 	bool load_shader_module(const char *filePath, GLenum shaderType, uint32_t *shaderID);
 	bool link_shader_modules(uint32_t *modules, uint32_t moduleCount, uint32_t *programID);
@@ -69,7 +68,7 @@ namespace gl_utils {
 		GLTexture2D(const GLTexture2D &) = delete;
 		~GLTexture2D();
 
-		void set_data(void *data, GLenum format);
+		void set_data(const void *data, GLenum format);
 		void bind(uint32_t indx = 0);
 
 		inline uint32_t id() { return m_ID; }
@@ -206,6 +205,14 @@ namespace gl_utils {
 	class GLVertexLayout {
 	public:
 
+		struct AttribInfo {
+			GLenum type{ 0 };
+			uint32_t count{ 0 };
+			uint32_t offset{ 0 };
+			uint32_t bufferIndex{ 0 };
+			uint32_t attribIndex{ 0 };
+		};
+
 		GLVertexLayout();
 		GLVertexLayout(const GLVertexLayout &) = delete;
 		~GLVertexLayout();
@@ -214,7 +221,8 @@ namespace gl_utils {
 		void bind();
 
 	private:
-		uint32_t m_VAO{ 0 };
+		//uint32_t m_VAO{ 0 };
 		uint32_t m_AttribIndx{ 0 };
+		std::vector<AttribInfo> m_Attributes{};
 	};
 }

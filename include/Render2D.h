@@ -1,7 +1,8 @@
 #pragma once
 
-#include "atl_types.h"
+#include <glm/glm.hpp>
 
+#include "atl_types.h"
 #include "camera.h"
 
 namespace Atlas::Render2D {
@@ -9,10 +10,13 @@ namespace Atlas::Render2D {
 	struct Vertex {
 		glm::vec3 pos;
 		glm::vec2 uv;
+		glm::vec4 color;
 	};
 
 	void init();
 
+	void rect(const glm::vec2 &pos, const glm::vec2 &size, Color color);
+	void flush();
 
-	void test_draw();
+	void set_camera(const Camera &camera);
 }

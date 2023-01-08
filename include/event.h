@@ -130,13 +130,28 @@ namespace Atlas {
 		MENU = 348,
 	};
 
+	namespace EventCategory {
+		enum _ : uint32_t {
+			Application = BIT(0),
+			Input = BIT(1),
+			Keyboard = BIT(2),
+			Mouse = BIT(3),
+		};
+	}
+
+	using EventCategoryBits = uint32_t;
+
 	struct WindowClosedEvent {
+		static const EventCategoryBits category = EventCategory::Application;
+
 		std::string to_string() const {
 			return "WindowClosed";
 		}
 	};
 
 	struct WindowResizedEvent {
+		static const EventCategoryBits category = EventCategory::Application;
+
 		uint32_t width, height;
 
 		std::string to_string() const {
@@ -148,6 +163,7 @@ namespace Atlas {
 	};
 
 	struct ViewportResizedEvent {
+		static const EventCategoryBits category = EventCategory::Application;
 		uint32_t width, height;
 
 		std::string to_string() const {
@@ -159,6 +175,7 @@ namespace Atlas {
 	};
 
 	struct KeyPressedEvent {
+		static const EventCategoryBits category = EventCategory::Input | EventCategory::Keyboard;
 		int keyCode;
 		bool repeat;
 
@@ -171,6 +188,7 @@ namespace Atlas {
 	};
 
 	struct KeyReleasedEvent {
+		static const EventCategoryBits category = EventCategory::Input | EventCategory::Keyboard;
 		int keyCode;
 
 		std::string to_string() const {
@@ -182,6 +200,7 @@ namespace Atlas {
 	};
 
 	struct KeyTypedEvent {
+		static const EventCategoryBits category = EventCategory::Input | EventCategory::Keyboard;
 		char key;
 
 		std::string to_string() const {
@@ -193,6 +212,7 @@ namespace Atlas {
 	};
 
 	struct MouseMovedEvent {
+		static const EventCategoryBits category = EventCategory::Input | EventCategory::Mouse;
 		float mouseX, mouseY;
 
 		std::string to_string() const {
@@ -204,6 +224,7 @@ namespace Atlas {
 	};
 
 	struct MouseScrolledEvent {
+		static const EventCategoryBits category = EventCategory::Input | EventCategory::Mouse;
 		float offsetX, offsetY;
 
 		std::string to_string() const {
@@ -215,6 +236,7 @@ namespace Atlas {
 	};
 
 	struct MouseButtonPressedEvent {
+		static const EventCategoryBits category = EventCategory::Input | EventCategory::Mouse;
 		int button;
 
 		std::string to_string() const {
@@ -226,6 +248,7 @@ namespace Atlas {
 	};
 
 	struct MouseButtonReleasedEvent {
+		static const EventCategoryBits category = EventCategory::Input | EventCategory::Mouse;
 		int button;
 
 		std::string to_string() const {
@@ -237,27 +260,20 @@ namespace Atlas {
 	};
 
 
-	enum EventCategory {
-		EventCategoryApplication = 1 << 0,
-		EventCategoryInput = 1 << 1,
-		EventCategoryKeyboard = 1 << 2,
-		EventCategoryMouse = 1 << 3,
-	};
-
 #define EVENT_LIST													\
-	A(WindowClosed, EventCategoryApplication)						\
-	A(WindowResized, EventCategoryApplication)						\
-	A(ViewportResized, EventCategoryApplication)					\
-	A(KeyPressed, EventCategoryInput | EventCategoryKeyboard)		\
-	A(KeyReleased, EventCategoryInput | EventCategoryKeyboard)		\
-	A(KeyTyped, EventCategoryInput | EventCategoryKeyboard)			\
-	A(MouseButtonPressed, EventCategoryInput | EventCategoryMouse)	\
-	A(MouseButtonReleased, EventCategoryInput | EventCategoryMouse)	\
-	A(MouseMoved, EventCategoryInput | EventCategoryMouse)			\
-	A(MouseScrolled, EventCategoryInput | EventCategoryMouse)		\
+	A(WindowClosed)						\
+	A(WindowResized)						\
+	A(ViewportResized)					\
+	A(KeyPressed)		\
+	A(KeyReleased)		\
+	A(KeyTyped)			\
+	A(MouseButtonPressed)	\
+	A(MouseButtonReleased)	\
+	A(MouseMoved)			\
+	A(MouseScrolled)		\
 
 	//Create Enum
-#define A(x, _) x,
+#define A(x) x,
 	enum class EventType : int {
 		NONE = -1,
 		EVENT_LIST
@@ -265,7 +281,7 @@ namespace Atlas {
 #undef A
 
 	//Create variant
-#define A(x, _) x##Event,
+#define A(x) x##Event,
 	using EventVariant = std::variant<
 		EVENT_LIST
 		std::monostate
@@ -278,7 +294,7 @@ namespace Atlas {
 		CORE_ASSERT(false, "get_event_type not defined for this type");
 		return EventType::NONE;
 	}
-#define A(x, _) \
+#define A(x) \
 template<> \
 inline EventType get_event_type< x##Event>() { \
 	return EventType::x; \
@@ -292,10 +308,10 @@ inline EventType get_event_type< x##Event>() { \
 		CORE_ASSERT(false, "get_event_category_flags not defined for this type");
 		return 0;
 	}
-#define A(x, z) \
+#define A(x) \
 template<> \
 inline int get_event_category_flags< x##Event >() { \
-	return z; \
+	return x##Event::category; \
 }
 	EVENT_LIST
 #undef A
@@ -307,14 +323,14 @@ inline int get_event_category_flags< x##Event >() { \
 
 			EventVariant event;
 
-#define A(x, _) Event(x##Event e) :event(e) {}
+#define A(x) Event(x##Event e) :event(e) {}
 			EVENT_LIST
 #undef A
 
 				EventType get_type() const {
 				size_t indx = event.index();
 
-#define A(x, _) if (indx == (int) get_event_type< x##Event >()) \
+#define A(x) if (indx == (int) get_event_type< x##Event >()) \
 { return EventType::x; }
 				EVENT_LIST
 #undef A
@@ -344,22 +360,10 @@ inline int get_event_category_flags< x##Event >() { \
 				return std::get<T>(event);
 			}
 
-			const char *get_name() {
-				size_t indx = event.index();
-
-#define A(x, _) if (indx == (int) get_event_type< x##Event >()) \
-													 { return #x; }
-				EVENT_LIST
-#undef A
-
-					assert(false);
-				return "NONE";
-			}
-
 			int get_category_flags() {
 				size_t indx = event.index();
 
-#define A(x, _) if (indx == (int) get_event_type< x##Event >()) \
+#define A(x) if (indx == (int) get_event_type< x##Event >()) \
 					{ return get_event_category_flags< x##Event >(); }
 				EVENT_LIST
 #undef A
@@ -371,7 +375,7 @@ inline int get_event_category_flags< x##Event >() { \
 			const std::string to_string() const {
 				size_t indx = event.index();
 
-#define A(x, _) if (indx == (int) get_event_type< x##Event >()) \
+#define A(x) if (indx == (int) get_event_type< x##Event >()) \
 					{ return get< x##Event >().to_string(); }
 				EVENT_LIST
 #undef A
@@ -379,15 +383,15 @@ inline int get_event_category_flags< x##Event >() { \
 				return "NONE";
 			}
 
-			inline bool in_category(EventCategory category) {
+			inline bool in_category(EventCategoryBits category) {
 				return get_category_flags() & category;
 			}
 	};
 
-	inline std::ostream &operator<<(std::ostream &os, const Event &e) {
-		return os << e.to_string();
+	inline std::ostream &operator<< (std::ostream &stream, const Event &e) {
+		stream << e.to_string();
+		return stream;
 	}
-
 
 	class EventDispatcher {
 
