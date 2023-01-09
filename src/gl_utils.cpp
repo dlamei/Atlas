@@ -28,11 +28,6 @@ const char *gl_get_error_string(GLenum error)
 	}
 }
 
-struct Vertex {
-	glm::vec3 pos;
-	glm::vec2 uv;
-};
-
 namespace gl_utils {
 
 	static uint32_t s_GlobalVAO{ 0 };
@@ -580,18 +575,18 @@ namespace gl_utils {
 
 	void GLVertexLayout::bind()
 	{
-		GLint maxAttribs;
-		glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttribs);
+		//GLint maxAttribs;
+		//glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttribs);
 
-		for (GLint i = 0; i < maxAttribs; i++) {
-			glDisableVertexArrayAttrib(s_GlobalVAO, i);
-		}
+		//for (GLint i = 0; i < maxAttribs; i++) {
+		//	glDisableVertexArrayAttrib(s_GlobalVAO, i);
+		//}
 
-		for (auto &attrib : m_Attributes) {
-			glEnableVertexArrayAttrib(s_GlobalVAO, attrib.attribIndex);
-			glVertexArrayAttribFormat(s_GlobalVAO, attrib.attribIndex, attrib.count, attrib.type, false, attrib.offset);
-			glVertexArrayAttribBinding(s_GlobalVAO, attrib.attribIndex, attrib.bufferIndex);
-		}
+		//for (auto &attrib : m_Attributes) {
+		//	glEnableVertexArrayAttrib(s_GlobalVAO, attrib.attribIndex);
+		//	glVertexArrayAttribFormat(s_GlobalVAO, attrib.attribIndex, attrib.count, attrib.type, false, attrib.offset);
+		//	glVertexArrayAttribBinding(s_GlobalVAO, attrib.attribIndex, attrib.bufferIndex);
+		//}
 	}
 
 	void gl_debug_msg(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
@@ -626,8 +621,32 @@ namespace gl_utils {
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
 		glDebugMessageCallback(gl_debug_msg, 0);
 
+		struct Vertex {
+			glm::vec3 pos;
+			glm::vec2 uv;
+			glm::vec4 color;
+			int texID;
+		};
+
+
 		glCreateVertexArrays(1, &s_GlobalVAO);
 		glBindVertexArray(s_GlobalVAO);
+
+		glEnableVertexArrayAttrib(s_GlobalVAO, 0);
+		glVertexArrayAttribFormat(s_GlobalVAO, 0, 3, GL_FLOAT, false, offsetof(Vertex, pos));
+		glVertexArrayAttribBinding(s_GlobalVAO, 0, 0);
+
+		glEnableVertexArrayAttrib(s_GlobalVAO, 1);
+		glVertexArrayAttribFormat(s_GlobalVAO, 1, 2, GL_FLOAT, false, offsetof(Vertex, uv));
+		glVertexArrayAttribBinding(s_GlobalVAO, 1, 0);
+
+		glEnableVertexArrayAttrib(s_GlobalVAO, 2);
+		glVertexArrayAttribFormat(s_GlobalVAO, 2, 4, GL_FLOAT, false, offsetof(Vertex, color));
+		glVertexArrayAttribBinding(s_GlobalVAO, 2, 0);
+
+		glEnableVertexArrayAttrib(s_GlobalVAO, 3);
+		glVertexArrayAttribFormat(s_GlobalVAO, 3, 1, GL_INT, false, offsetof(Vertex, texID));
+		glVertexArrayAttribBinding(s_GlobalVAO, 3, 0);
 
 		CORE_TRACE("OpenGL Info:");
 		CORE_TRACE(" vendor:	{}", (const char *)glGetString(GL_VENDOR));

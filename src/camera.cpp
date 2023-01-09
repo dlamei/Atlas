@@ -28,9 +28,10 @@ namespace Atlas {
 
 	void OrthographicCamera::recalculate_view()
 	{
-		glm::mat4 transform = glm::rotate(glm::mat4(1.0f), glm::radians(m_Rotation), glm::vec3(0, 0, 1)) * glm::translate(glm::mat4(1.0f), m_Position);
+		glm::mat4 transform = glm::rotate(glm::mat4(1.0f), glm::radians(m_Rotation), glm::vec3(0, 0, 1)) * glm::translate(glm::mat4(1.0f), -m_Position);
 
-		m_ViewMatrix = glm::inverse(transform);
+		//m_ViewMatrix = glm::inverse(transform);
+		m_ViewMatrix = transform;
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 
 	}
@@ -115,6 +116,18 @@ namespace Atlas {
 	{
 		m_Camera.set_position(pos);
 		m_CameraPosition = pos;
+	}
+
+	void OrthographicCameraController::set_camera(float left, float right, float bottom, float top)
+	{
+		float mX = (left + right) / 2;
+		float mY = (bottom + top) / 2;
+		set_position({ mX, mY, 0 });
+
+		float size = std::max(std::abs(left - right), std::abs(top - bottom));
+
+		m_ZoomLevel = size / m_AspectRatio;
+		m_Camera.set_projection(-m_AspectRatio * m_ZoomLevel, m_AspectRatio * m_ZoomLevel, -m_ZoomLevel, m_ZoomLevel);
 	}
 
 	const glm::vec3 &OrthographicCameraController::get_position()
@@ -283,7 +296,6 @@ namespace Atlas {
 			m_CameraPosition += m_Camera.get_right() * (m_CameraMoveSpeed * ts);
 			updated = true;
 		}
-
 
 		if (Application::is_key_pressed(KeyCode::LEFT_CONTROL))
 		{

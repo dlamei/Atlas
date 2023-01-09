@@ -108,7 +108,7 @@ namespace Atlas {
 		static void bind(const Texture2D &texture, uint32_t indx = 0);
 		static void unbind(uint32_t index);
 
-		void set_data(const Color *data) const;
+		void set_data(const Color *data, size_t size) const;
 
 		uint32_t width() const;
 		uint32_t height() const;
@@ -447,16 +447,19 @@ namespace Atlas {
 		void set(const std::string &name, const glm::ivec2 &value);
 		void set(const std::string &name, const glm::ivec3 &value);
 		void set(const std::string &name, const glm::ivec4 &value);
+		void set(const std::string &name, int32_t *value, size_t count);
 
 		void set(const std::string &name, uint32_t value);
 		void set(const std::string &name, const glm::uvec2 &value);
 		void set(const std::string &name, const glm::uvec3 &value);
 		void set(const std::string &name, const glm::uvec4 &value);
+		void set(const std::string &name, uint32_t *value, size_t count);
 
 		void set(const std::string &name, float value);
 		void set(const std::string &name, const glm::vec2 &value);
 		void set(const std::string &name, const glm::vec3 &value);
 		void set(const std::string &name, const glm::vec4 &value);
+		void set(const std::string &name, float *value, size_t count);
 
 		void set(const std::string &name, const glm::mat3 &value);
 		void set(const std::string &name, const glm::mat4 &value);

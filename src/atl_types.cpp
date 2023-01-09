@@ -182,7 +182,7 @@ namespace Atlas {
 		}
 
 		Texture2D tex = Texture2D(info);
-		tex.set_data((Color *)data);
+		tex.set_data((Color *)data, width * height);
 
 		stbi_image_free(data);
 
@@ -205,9 +205,10 @@ namespace Atlas {
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-	void Texture2D::set_data(const Color *data) const
+	void Texture2D::set_data(const Color *data, size_t size) const
 	{
 		CORE_ASSERT(m_Texture, "Texture2D::set_data: texture was not initialized!");
+		CORE_ASSERT(width() * height() == size, "Texture2D::set_data: size == width * height");
 		m_Texture->set_data(data, color_format_to_int_gl_enum(m_Format));
 	}
 
@@ -586,15 +587,30 @@ namespace Atlas {
 	IMPL_SHADER_FUNC(const glm::ivec3 &, set_int3);
 	IMPL_SHADER_FUNC(const glm::ivec4 &, set_int4);
 
+	void Shader::set(const std::string &name, int32_t *value, size_t count)
+	{
+		m_Shader->set_int_vec(name.c_str(), value, count);
+	}
+
 	IMPL_SHADER_FUNC(uint32_t, set_int);
 	IMPL_SHADER_FUNC(const glm::uvec2 &, set_uint2);
 	IMPL_SHADER_FUNC(const glm::uvec3 &, set_uint3);
 	IMPL_SHADER_FUNC(const glm::uvec4 &, set_uint4);
 
+	void Shader::set(const std::string &name, uint32_t *value, size_t count)
+	{
+		m_Shader->set_uint_vec(name.c_str(), value, count);
+	}
+
 	IMPL_SHADER_FUNC(float, set_float);
 	IMPL_SHADER_FUNC(const glm::vec2 &, set_float2);
 	IMPL_SHADER_FUNC(const glm::vec3 &, set_float3);
 	IMPL_SHADER_FUNC(const glm::vec4 &, set_float4);
+
+	void Shader::set(const std::string &name, float *value, size_t count)
+	{
+		m_Shader->set_float_vec(name.c_str(), value, count);
+	}
 
 	IMPL_SHADER_FUNC(const glm::mat3 &, set_mat3);
 	IMPL_SHADER_FUNC(const glm::mat4 &, set_mat4);

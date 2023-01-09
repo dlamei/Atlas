@@ -8,11 +8,15 @@
 
 class Sandbox : public Atlas::Layer {
 
+	const uint32_t size = 1;
+
 	Atlas::OrthographicCameraController controller;
+	Atlas::Texture2D texture;
 
 	void on_attach() override {
 		Atlas::Render2D::init();
-		Atlas::Render::clear_color({ 0, 0, 0, 0 });
+		controller.set_camera(0, size, 0, size);
+		texture = Atlas::Texture2D::load("assets/images/uv_checker.png").value();
 	}
 
 	void on_detach() override {
@@ -22,20 +26,20 @@ class Sandbox : public Atlas::Layer {
 		using namespace Atlas;
 
 		controller.on_update(ts);
+
 		Render2D::set_camera(controller.get_camera());
 
 		ImGui::ShowDemoWindow();
 
 		Render::begin(Application::get_viewport_color());
 
-		const uint32_t size = 80;
 		for (uint32_t i = 0; i < size; i++) {
 			for (uint32_t j = 0; j < size; j++) {
 				glm::vec3 color{};
 				color.r = (float)i / size;
 				color.g = (float)j / size;
-				color.b = (float)(i + j) / (2 * size);
-				Render2D::rect({ i, j }, { 0.7f, 0.7f }, Color::from_normalized(color));
+				color.b = 1 - ((float)i + j) / (size * 2);
+				Render2D::rect({ i, j }, { 0.7f, 0.7f }, texture, Color::from_normalized(color));
 			}
 		}
 

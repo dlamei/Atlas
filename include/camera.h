@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "event.h"
 
@@ -15,6 +16,8 @@ namespace Atlas {
 		virtual const glm::mat4 &get_projection() const = 0;
 		virtual const glm::mat4 &get_view() const = 0;
 		virtual const glm::mat4 &get_view_projection() const = 0;
+
+		virtual ~Camera() {}
 	};
 
 	class CameraController {
@@ -80,7 +83,10 @@ namespace Atlas {
 
 		void on_update(float ts) override;
 		void on_event(Event &e) override;
+
 		void set_position(const glm::vec3 &pos) override;
+		void set_camera(float left, float right, float bottom, float top);
+
 		const glm::vec3 &get_position() override;
 
 		OrthographicCamera &get_camera() override { return m_Camera; }
