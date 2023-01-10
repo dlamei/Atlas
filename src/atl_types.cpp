@@ -182,7 +182,7 @@ namespace Atlas {
 		}
 
 		Texture2D tex = Texture2D(info);
-		tex.set_data((Color *)data, width * height);
+		tex.set_data((Color *)data, (size_t)width * height);
 
 		stbi_image_free(data);
 
@@ -391,6 +391,7 @@ namespace Atlas {
 		}
 
 		if (s_GlobalBindingContext.indexBuffer == buffer) return;
+
 		s_GlobalBindingContext.indexBuffer = buffer;
 		gl_utils::bind_index_buffer(buffer.m_Buffer);
 	}
@@ -445,18 +446,6 @@ namespace Atlas {
 		info.types = BufferType::STORAGE;
 		info.usage = usage;
 		info.stride = size;
-
-		return Buffer(info);
-	}
-
-	Buffer Buffer::index(uint32_t *data, size_t count, BufferUsage usage)
-	{
-		BufferCreateInfo info{};
-		info.size = sizeof(uint32_t) * count;
-		info.data = (void *)data;
-		info.types = BufferType::INDEX_U32;
-		info.usage = usage;
-		info.stride = sizeof(uint32_t);
 
 		return Buffer(info);
 	}
@@ -674,6 +663,7 @@ namespace Atlas {
 	{
 		return !(b1 == b2);
 	}
+
 	bool operator==(const VertexLayout &v1, const VertexLayout &v2)
 	{
 		return v1.m_Layout == v2.m_Layout;

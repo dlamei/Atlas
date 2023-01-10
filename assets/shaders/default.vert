@@ -21,6 +21,6 @@ void main() {
 	gl_Position = cam.viewProj * vec4(vPos, 1.0f);
 	outUV = vUV;
 	outColor = vColor;
-	outTexID = 1;
+	outTexID = vTexID;
 }
 

@@ -16,6 +16,8 @@ namespace Atlas::Render2D {
 
 	void init();
 
+	void rect(const glm::vec2 &pos, const glm::vec2 size, const Texture2D &texture);
+	void rect(const glm::vec2 &pos, const glm::vec2 size, Color color);
 	void rect(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture, Color tint);
 	void flush();
 

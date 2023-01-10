@@ -211,6 +211,7 @@ namespace gl_utils {
 			uint32_t offset{ 0 };
 			uint32_t bufferIndex{ 0 };
 			uint32_t attribIndex{ 0 };
+			bool normalize{ false };
 		};
 
 		GLVertexLayout();

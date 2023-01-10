@@ -8,15 +8,16 @@
 
 class Sandbox : public Atlas::Layer {
 
-	const uint32_t size = 1;
+	const uint32_t size = 200;
 
 	Atlas::OrthographicCameraController controller;
 	Atlas::Texture2D texture;
+	glm::ivec2 offset{};
 
 	void on_attach() override {
 		Atlas::Render2D::init();
-		controller.set_camera(0, size, 0, size);
-		texture = Atlas::Texture2D::load("assets/images/uv_checker.png").value();
+		controller.set_camera(0, (float)size, 0, (float)size);
+		texture = Atlas::Texture2D::load("assets/images/uv_checker.png", Atlas::TextureFilter::NEAREST).value();
 	}
 
 	void on_detach() override {
@@ -36,15 +37,23 @@ class Sandbox : public Atlas::Layer {
 		for (uint32_t i = 0; i < size; i++) {
 			for (uint32_t j = 0; j < size; j++) {
 				glm::vec3 color{};
-				color.r = (float)i / size;
-				color.g = (float)j / size;
+				uint32_t x = (i + offset.x) % size;
+				uint32_t y = (j + offset.y) % size;
+				color.r = (float)x / size;
+				color.g = (float)y / size;
 				color.b = 1 - ((float)i + j) / (size * 2);
-				Render2D::rect({ i, j }, { 0.7f, 0.7f }, texture, Color::from_normalized(color));
+				Render2D::rect({ i, j }, { 1, 1 }, Color::from_normalized(color));
 			}
 		}
 
 		Render2D::flush();
 		Render::end();
+	}
+
+	void on_imgui() override {
+		ImGui::Begin("Settings");
+		ImGui::DragInt2("offset", &offset[0], 1.0f, 0, size);
+		ImGui::End();
 	}
 
 	void on_event(Atlas::Event &e) override {

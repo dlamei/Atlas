@@ -27,17 +27,17 @@ namespace Atlas::Render2D {
 		Buffer vertexBuffer;
 		Buffer indexBuffer;
 
-		std::array<Vertex, MAX_VERTICES> vertices;
-		std::array<uint32_t, MAX_INDICES> indices;
+		std::array<Vertex, MAX_VERTICES> vertices{};
+		std::array<uint32_t, MAX_INDICES> indices{};
 
-		std::array<Texture2D, MAX_TEXTURE_SLOTS> textures;
+		std::array<Texture2D, MAX_TEXTURE_SLOTS> textures{};
 		uint32_t textureIndex{ 1 };
 
 		uint32_t vertexCount{ 0 };
 		uint32_t indexCount{ 0 };
 
-		Vertex *vertexPtr;
-		uint32_t *indexPtr;
+		Vertex *vertexPtr{ nullptr };
+		uint32_t *indexPtr{ nullptr };
 
 		Texture2D whiteTexture;
 	};
@@ -58,7 +58,7 @@ namespace Atlas::Render2D {
 
 		s_RenderData.whiteTexture = Texture2D::color(1, 1);
 		{
-			Color c = { 255 };
+			Color c = { 255, 255, 255 };
 			s_RenderData.whiteTexture.set_data(&c, 1);
 		}
 
@@ -67,12 +67,7 @@ namespace Atlas::Render2D {
 		int textureSlots[RenderData::MAX_TEXTURE_SLOTS]{};
 		for (int i = 0; i < RenderData::MAX_TEXTURE_SLOTS; i++) textureSlots[i] = i;
 
-		//s_RenderData.layout = VertexLayout::from(&Vertex::pos, &Vertex::uv, &Vertex::color, &Vertex::texID);
-		s_RenderData.layout = VertexLayout::empty();
-		s_RenderData.layout.push(&Vertex::pos);
-		s_RenderData.layout.push(&Vertex::uv);
-		s_RenderData.layout.push(&Vertex::color);
-		s_RenderData.layout.push(&Vertex::texID);
+		s_RenderData.layout = VertexLayout::from(&Vertex::pos, &Vertex::uv, &Vertex::color, &Vertex::texID);
 
 		s_RenderData.shader = Shader::load("assets/shaders/default.vert", "assets/shaders/default.frag", s_RenderData.layout);
 		s_RenderData.shader.set("uTextureSlots[0]", textureSlots, RenderData::MAX_TEXTURE_SLOTS);
@@ -92,6 +87,16 @@ namespace Atlas::Render2D {
 
 		s_RenderData.textures.at(s_RenderData.textureIndex) = texture;
 		return s_RenderData.textureIndex++;
+	}
+
+	void rect(const glm::vec2 &pos, const glm::vec2 size, const Texture2D &texture)
+	{
+		rect(pos, size, texture, { 255, 255, 255, 255 });
+	}
+
+	void rect(const glm::vec2 &pos, const glm::vec2 size, Color color)
+	{
+		rect(pos, size, s_RenderData.whiteTexture, color);
 	}
 
 	void rect(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture, Color tint)
@@ -139,6 +144,14 @@ namespace Atlas::Render2D {
 		s_RenderData.indexCount += 6;
 	}
 
+	void reset() {
+		s_RenderData.vertexPtr = s_RenderData.vertices.data();
+		s_RenderData.indexPtr = s_RenderData.indices.data();
+		s_RenderData.vertexCount = 0;
+		s_RenderData.indexCount = 0;
+		s_RenderData.textureIndex = 1;
+	}
+
 	void flush() {
 		s_RenderData.vertexBuffer.set_data(s_RenderData.vertices.data(), s_RenderData.vertexCount * sizeof(Vertex));
 		s_RenderData.indexBuffer.set_data(s_RenderData.indices.data(), s_RenderData.indexCount * sizeof(uint32_t));
@@ -147,17 +160,13 @@ namespace Atlas::Render2D {
 		Buffer::bind_index(s_RenderData.indexBuffer);
 		Buffer::bind_vertex(s_RenderData.vertexBuffer);
 
-		for (int i = 0; i < s_RenderData.textureIndex; i++) {
+		for (uint32_t i = 0; i < s_RenderData.textureIndex; i++) {
 			Texture2D::bind(s_RenderData.textures.at(i), i);
 		}
 
 		Render::draw_indexed(s_RenderData.indexCount);
 
-		s_RenderData.vertexPtr = s_RenderData.vertices.data();
-		s_RenderData.indexPtr = s_RenderData.indices.data();
-		s_RenderData.vertexCount = 0;
-		s_RenderData.indexCount = 0;
-		s_RenderData.textureIndex = 1;
+		reset();
 	}
 
 	void set_camera(const Camera &camera)

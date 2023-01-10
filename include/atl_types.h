@@ -203,7 +203,6 @@ namespace Atlas {
 		BufferTypeBits types;
 
 		size_t stride;
-
 		void *data;
 	};
 
@@ -212,17 +211,6 @@ namespace Atlas {
 
 		Buffer() = default;
 		Buffer(const BufferCreateInfo &info);
-
-		template <typename T>
-		static Buffer vertex(T *data, size_t count, BufferUsage usage = BufferUsage::STATIC) {
-			BufferCreateInfo info{};
-			info.size = sizeof(T) * count;
-			info.data = (void *)data;
-			info.types = BufferType::VERTEX;
-			info.usage = usage;
-			info.stride = sizeof(T);
-			return Buffer(info);
-		}
 
 		template <typename T>
 		static Buffer vertex(size_t count, BufferUsage usage = BufferUsage::STATIC) {
@@ -263,7 +251,6 @@ namespace Atlas {
 		static Buffer uniform(void *data, size_t size, BufferUsage usage = BufferUsage::STATIC);
 		static Buffer storage(void *data, size_t size, BufferUsage usage = BufferUsage::STATIC);
 
-		static Buffer index(uint32_t *data, size_t count, BufferUsage usage = BufferUsage::STATIC);
 		static Buffer index(size_t count, BufferUsage usage = BufferUsage::STATIC);
 
 		void set_data(void *data, size_t size);
