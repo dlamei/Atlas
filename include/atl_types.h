@@ -48,8 +48,8 @@ namespace Atlas {
 		Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 		Color(uint8_t r, uint8_t g, uint8_t b);
 
-		static Color from_normalized(glm::vec3 val);
-		static Color from_normalized(glm::vec4 val);
+		static Color from_norm(glm::vec3 val);
+		static Color from_norm(glm::vec4 val);
 
 		inline uint8_t red() const;
 		inline uint8_t green() const;
@@ -455,6 +455,8 @@ namespace Atlas {
 
 		Buffer &get_uniform_buffer(const char *name);
 		Buffer &get_storage_buffer(const char *name);
+
+		inline VertexLayout get_layout() { return m_Layout; }
 
 		friend bool operator==(const Shader &s1, const Shader &s2);
 		friend bool operator!=(const Shader &s1, const Shader &s2);

@@ -45,7 +45,7 @@ namespace Atlas {
 	Color::Color(uint8_t r, uint8_t g, uint8_t b)
 		: m_Data(to_rgb(r, g, b, 255)) {}
 
-	Color Color::from_normalized(glm::vec3 val)
+	Color Color::from_norm(glm::vec3 val)
 	{
 		uint8_t r = static_cast<uint8_t>(val.r * 255);
 		uint8_t g = static_cast<uint8_t>(val.g * 255);
@@ -53,7 +53,7 @@ namespace Atlas {
 		return Color(r, g, b);
 	}
 
-	Color Color::from_normalized(glm::vec4 val)
+	Color Color::from_norm(glm::vec4 val)
 	{
 		uint8_t r = static_cast<uint8_t>(val.r * 255);
 		uint8_t g = static_cast<uint8_t>(val.g * 255);

@@ -287,7 +287,6 @@ namespace gl_utils {
 		else {
 			glNamedBufferData(m_ID, m_Size, info.data, info.usage);
 		}
-
 	}
 
 	void GLBuffer::set_data(void *data, size_t size)
@@ -313,7 +312,7 @@ namespace gl_utils {
 
 	void bind_vertex_buffer(const Ref<GLBuffer> &GLBuffer, size_t stride, uint32_t indx, uint32_t offset) {
 		CORE_ASSERT(s_GlobalVAO, "gl_utils::bind_vertex_buffer: opengl was not yet initialized!");
-		glVertexArrayVertexBuffer(s_GlobalVAO, indx, GLBuffer->id(), offset, stride);
+		glVertexArrayVertexBuffer(s_GlobalVAO, indx, GLBuffer->id(), offset, (int)stride);
 	}
 
 	void bind_index_buffer(const Ref<GLBuffer> &buffer) {

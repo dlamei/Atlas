@@ -22,7 +22,6 @@ namespace Atlas::Render2D {
 
 		glm::mat4 viewProj;
 		Shader shader;
-		VertexLayout layout;
 
 		Buffer vertexBuffer;
 		Buffer indexBuffer;
@@ -53,30 +52,26 @@ namespace Atlas::Render2D {
 
 		s_RenderData.init = true;
 
-		s_RenderData.vertexPtr = s_RenderData.vertices.data();
-		s_RenderData.indexPtr = s_RenderData.indices.data();
-
 		s_RenderData.whiteTexture = Texture2D::color(1, 1);
-		{
-			Color c = { 255, 255, 255 };
-			s_RenderData.whiteTexture.set_data(&c, 1);
-		}
-
+		Color c = { 255, 255, 255 };
+		s_RenderData.whiteTexture.set_data(&c, 1);
 		s_RenderData.textures[0] = s_RenderData.whiteTexture;
 
-		int textureSlots[RenderData::MAX_TEXTURE_SLOTS]{};
-		for (int i = 0; i < RenderData::MAX_TEXTURE_SLOTS; i++) textureSlots[i] = i;
-
-		s_RenderData.layout = VertexLayout::from(&Vertex::pos, &Vertex::uv, &Vertex::color, &Vertex::texID);
-
-		s_RenderData.shader = Shader::load("assets/shaders/default.vert", "assets/shaders/default.frag", s_RenderData.layout);
-		s_RenderData.shader.set("uTextureSlots[0]", textureSlots, RenderData::MAX_TEXTURE_SLOTS);
+		auto layout = VertexLayout::from(&Vertex::pos, &Vertex::uv, &Vertex::color, &Vertex::texID);
+		s_RenderData.shader = Shader::load("assets/shaders/default.vert", "assets/shaders/default.frag", layout);
 
 		s_RenderData.vertexBuffer = Buffer::vertex<Vertex>(RenderData::MAX_VERTICES, BufferUsage::DYNAMIC);
 		s_RenderData.indexBuffer = Buffer::index(RenderData::MAX_INDICES, BufferUsage::DYNAMIC);
 
 		Buffer cameraBuffer = Buffer::uniform(glm::ortho(-1, 1, -1, 1), BufferUsage::DYNAMIC);
 		s_RenderData.shader.set("CameraBuffer", cameraBuffer);
+
+		s_RenderData.vertexPtr = s_RenderData.vertices.data();
+		s_RenderData.indexPtr = s_RenderData.indices.data();
+
+		int textureSlots[RenderData::MAX_TEXTURE_SLOTS]{};
+		for (int i = 0; i < RenderData::MAX_TEXTURE_SLOTS; i++) textureSlots[i] = i;
+		s_RenderData.shader.set("uTextureSlots[0]", textureSlots, RenderData::MAX_TEXTURE_SLOTS);
 	}
 
 	int push_texture(const Texture2D &texture) {
@@ -99,49 +94,91 @@ namespace Atlas::Render2D {
 		rect(pos, size, s_RenderData.whiteTexture, color);
 	}
 
+	inline void push_local_vertex(const Vertex &v)
+	{
+		*s_RenderData.vertexPtr = v;
+		s_RenderData.vertexPtr++;
+	}
+
+	inline void push_local_index(uint32_t index)
+	{
+		*s_RenderData.indexPtr = s_RenderData.vertexCount + index;
+		s_RenderData.indexPtr++;
+	}
+
 	void rect(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture, Color tint)
 	{
-		if (s_RenderData.vertexCount + 4 >= RenderData::MAX_VERTICES) flush();
-		if (s_RenderData.indexCount + 6 >= RenderData::MAX_INDICES) flush();
+		const uint32_t vertexCount = 4;
+		const uint32_t indexCount = 6;
+
+		if (s_RenderData.vertexCount + vertexCount >= RenderData::MAX_VERTICES) flush();
+		if (s_RenderData.indexCount + indexCount >= RenderData::MAX_INDICES) flush();
 		if (s_RenderData.textureIndex + 1 >= RenderData::MAX_TEXTURE_SLOTS) flush();
 
 		int texID = push_texture(texture);
 
 		auto normColor = tint.normalized();
 
-		s_RenderData.vertexPtr->pos = glm::vec3(pos, 0);
-		s_RenderData.vertexPtr->uv = glm::vec2(0, 0);
-		s_RenderData.vertexPtr->color = normColor;
-		s_RenderData.vertexPtr->texID = texID;
-		s_RenderData.vertexPtr++;
+		Vertex v{};
+		v.color = normColor;
+		v.texID = texID;
 
-		s_RenderData.vertexPtr->pos = { pos.x + size.x, pos.y, 0 };
-		s_RenderData.vertexPtr->uv = glm::vec2(1, 0);
-		s_RenderData.vertexPtr->color = normColor;
-		s_RenderData.vertexPtr->texID = texID;
-		s_RenderData.vertexPtr++;
+		v.pos = pos;
+		v.uv = glm::vec2(0, 0);
+		push_local_vertex(v);
 
-		s_RenderData.vertexPtr->pos = { pos.x + size.x, pos.y + size.y, 0 };
-		s_RenderData.vertexPtr->uv = glm::vec2(1, 1);
-		s_RenderData.vertexPtr->color = normColor;
-		s_RenderData.vertexPtr->texID = texID;
-		s_RenderData.vertexPtr++;
+		v.pos = { pos.x + size.x, pos.y };
+		v.uv = glm::vec2(1, 0);
+		push_local_vertex(v);
 
-		s_RenderData.vertexPtr->pos = { pos.x, pos.y + size.y, 0 };
-		s_RenderData.vertexPtr->uv = glm::vec2(0, 1);
-		s_RenderData.vertexPtr->color = normColor;
-		s_RenderData.vertexPtr->texID = texID;
-		s_RenderData.vertexPtr++;
+		v.pos = { pos.x + size.x, pos.y + size.y };
+		v.uv = glm::vec2(1, 1);
+		push_local_vertex(v);
 
-		*(s_RenderData.indexPtr++) = s_RenderData.vertexCount + 0;
-		*(s_RenderData.indexPtr++) = s_RenderData.vertexCount + 1;
-		*(s_RenderData.indexPtr++) = s_RenderData.vertexCount + 2;
-		*(s_RenderData.indexPtr++) = s_RenderData.vertexCount + 2;
-		*(s_RenderData.indexPtr++) = s_RenderData.vertexCount + 3;
-		*(s_RenderData.indexPtr++) = s_RenderData.vertexCount + 0;
+		v.pos = { pos.x, pos.y + size.y };
+		v.uv = glm::vec2(0, 1);
+		push_local_vertex(v);
 
-		s_RenderData.vertexCount += 4;
-		s_RenderData.indexCount += 6;
+		push_local_index(0);
+		push_local_index(1);
+		push_local_index(2);
+		push_local_index(2);
+		push_local_index(3);
+		push_local_index(0);
+
+		s_RenderData.vertexCount += vertexCount;
+		s_RenderData.indexCount += indexCount;
+	}
+
+	void tri(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3, Color color)
+	{
+		const uint32_t vertexCount = 3;
+		const uint32_t indexCount = 3;
+
+		if (s_RenderData.vertexCount + vertexCount >= RenderData::MAX_VERTICES) flush();
+		if (s_RenderData.indexCount + indexCount >= RenderData::MAX_INDICES) flush();
+
+		int texID = 0;
+		auto normColor = color.normalized();
+
+		Vertex v{};
+		v.color = normColor;
+		v.texID = texID;
+		v.uv = glm::vec2(0, 0);
+
+		v.pos = p1;
+		push_local_vertex(v);
+		v.pos = p2;
+		push_local_vertex(v);
+		v.pos = p3;
+		push_local_vertex(v);
+
+		push_local_index(0);
+		push_local_index(1);
+		push_local_index(2);
+
+		s_RenderData.vertexCount += vertexCount;
+		s_RenderData.indexCount += indexCount;
 	}
 
 	void reset() {

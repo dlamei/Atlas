@@ -6,9 +6,9 @@ layout (location = 2) flat in int inTexID;
 
 uniform sampler2D uTextureSlots[32];
 
-out vec4 fragColor;
+out vec4 outFragColor;
 
 void main() {
-	fragColor = texture(uTextureSlots[inTexID], inUV) * inColor;
+	outFragColor = texture(uTextureSlots[inTexID], inUV) * inColor;
 }
 

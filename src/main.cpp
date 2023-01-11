@@ -9,10 +9,10 @@
 class Sandbox : public Atlas::Layer {
 
 	const uint32_t size = 200;
+	float triSize = 0.25;
 
 	Atlas::OrthographicCameraController controller;
 	Atlas::Texture2D texture;
-	glm::ivec2 offset{};
 
 	void on_attach() override {
 		Atlas::Render2D::init();
@@ -37,14 +37,14 @@ class Sandbox : public Atlas::Layer {
 		for (uint32_t i = 0; i < size; i++) {
 			for (uint32_t j = 0; j < size; j++) {
 				glm::vec3 color{};
-				uint32_t x = (i + offset.x) % size;
-				uint32_t y = (j + offset.y) % size;
-				color.r = (float)x / size;
-				color.g = (float)y / size;
+				color.r = (float)i / size;
+				color.g = (float)j / size;
 				color.b = 1 - ((float)i + j) / (size * 2);
-				Render2D::rect({ i, j }, { 1, 1 }, Color::from_normalized(color));
+				Render2D::rect({ i, j }, { 1, 1 }, texture, Color::from_norm(color));
 			}
 		}
+
+		Render2D::tri({ size * triSize, size * triSize }, { size / 2, size - size * triSize }, { size - size * triSize, size * triSize }, { 200, 0, 100, 100 });
 
 		Render2D::flush();
 		Render::end();
@@ -52,7 +52,7 @@ class Sandbox : public Atlas::Layer {
 
 	void on_imgui() override {
 		ImGui::Begin("Settings");
-		ImGui::DragInt2("offset", &offset[0], 1.0f, 0, size);
+		ImGui::DragFloat("Triangle Size", &triSize, .001, 0, 1);
 		ImGui::End();
 	}
 
