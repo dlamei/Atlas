@@ -30,7 +30,6 @@ class Sandbox : public Atlas::Layer {
 
 		Render2D::set_camera(controller.get_camera());
 
-		ImGui::ShowDemoWindow();
 
 		Render::begin(Application::get_viewport_color());
 
@@ -51,6 +50,8 @@ class Sandbox : public Atlas::Layer {
 	}
 
 	void on_imgui() override {
+		ImGui::ShowDemoWindow();
+
 		ImGui::Begin("Settings");
 		ImGui::DragFloat("Triangle Size", &triSize, .001f, 0, 1);
 		ImGui::End();

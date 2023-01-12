@@ -65,20 +65,17 @@ namespace Atlas {
 			m_Window->on_update();
 			if (m_Window->is_minimized()) continue;
 
-			Render::frame_start();
-			m_ImGuiLayer->begin();
-
 			update();
 
-			render_viewport();
-			m_ImGuiLayer->end();
-			Render::frame_end();
 
 		}
 	}
 
 	void Application::update()
 	{
+		Render::frame_start();
+		m_ImGuiLayer->begin();
+
 		float time = (float)m_Window->get_time();
 		Timestep timestep = time - m_LastFrameTime;
 		m_LastFrameTime = time;
@@ -88,6 +85,10 @@ namespace Atlas {
 
 		for (auto &layer : m_LayerStack) layer->on_imgui();
 		for (auto &layer : m_LayerStack) layer->on_update(timestep);
+
+		render_viewport();
+		m_ImGuiLayer->end();
+		Render::frame_end();
 	}
 
 	void Application::update_frame()
