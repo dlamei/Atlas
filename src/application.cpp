@@ -18,7 +18,6 @@ struct Vertex {
 
 namespace Atlas {
 
-
 	Application *Application::s_Instance = nullptr;
 
 	Application::Application()
@@ -40,6 +39,7 @@ namespace Atlas {
 		m_ColorBuffer = Texture2D::color((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 		m_DepthBuffer = Texture2D::depth((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 
+		//m_RenderThread = std::thread(Application::update_frame);
 	}
 
 	Application::~Application()
@@ -59,15 +59,21 @@ namespace Atlas {
 		m_LastFrameTime = (float)m_Window->get_time();
 
 		while (!m_Window->should_close()) {
-			Render::frame_start();
+			ATL_FRAME("MainThread");
+
 
 			m_Window->on_update();
 			if (m_Window->is_minimized()) continue;
 
-			ATL_FRAME("MainThread");
+			Render::frame_start();
+			m_ImGuiLayer->begin();
+
 			update();
 
+			render_viewport();
+			m_ImGuiLayer->end();
 			Render::frame_end();
+
 		}
 	}
 
@@ -77,17 +83,11 @@ namespace Atlas {
 		Timestep timestep = time - m_LastFrameTime;
 		m_LastFrameTime = time;
 
-		m_ImGuiLayer->begin();
-
 		for (Event e : m_QueuedEvents) on_event(e);
 		m_QueuedEvents.clear();
 
-		for (auto &layer : m_LayerStack) layer->on_update(timestep);
 		for (auto &layer : m_LayerStack) layer->on_imgui();
-
-		render_viewport();
-
-		m_ImGuiLayer->end();
+		for (auto &layer : m_LayerStack) layer->on_update(timestep);
 	}
 
 	void Application::update_frame()
@@ -135,7 +135,8 @@ namespace Atlas {
 		if (viewportSize.x != m_ViewportSize.x || viewportSize.y != m_ViewportSize.y) {
 			Atlas::ViewportResizedEvent event = { (uint32_t)viewportSize.x, (uint32_t)viewportSize.y };
 			Atlas::Event e(event);
-			queue_event(e);
+			on_event(e);
+			//queue_event(e);
 		}
 	}
 
@@ -218,8 +219,6 @@ namespace Atlas {
 			.dispatch<MouseMovedEvent>(BIND_EVENT_FN(Application::on_mouse_moved))
 			.dispatch<WindowResizedEvent>(BIND_EVENT_FN(Application::on_window_resized))
 			.dispatch<ViewportResizedEvent>(BIND_EVENT_FN(Application::on_viewport_resized));
-
-		//m_CameraController.on_event(event);
 
 		for (auto &layer : m_LayerStack) {
 			if (event.handled) break;

@@ -90,6 +90,8 @@ namespace Atlas {
 		bool m_ViewportHovered;
 		glm::vec2 m_ViewportMousePos;
 
+		std::thread m_RenderThread;
+
 		static Application *s_Instance;
 	};
 

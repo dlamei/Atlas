@@ -22,21 +22,23 @@ set(SOURCES
 	src/atl_types.cpp
 	src/RenderApi.cpp
 	src/Render2D.cpp
+
+	src/gl_utils.h
+	src/gl_atl_utils.h
+	src/pch.h
+	src/imgui_build.h
 	)
 
-set(HEADERS
+set(INCLUDE_FILES
 	include/event.h
 	include/window.h
-	include/gl_utils.h
-	include/imgui_build.h
 	include/utils.h
-	include/pch.h
 	include/camera.h
 	include/application.h
 	include/atl_types.h
-	include/gl_atl_utils.h
 	include/RenderApi.h
 	include/Render2D.h
+
 	)
 
 set(EMBEDED
@@ -48,12 +50,12 @@ include_directories(embed)
 
 add_executable(${PROJECT_NAME} src/main.cpp
 	${SOURCES}
-	${HEADERS}
+	${INCLUDE_FILES}
 	${EMBEDED}
 )
 
 target_precompile_headers(${PROJECT_NAME}
-	PRIVATE include/pch.h
+	PRIVATE src/pch.h
 	)
 
 target_link_libraries(${PROJECT_NAME}

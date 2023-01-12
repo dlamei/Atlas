@@ -14,6 +14,7 @@
 #include <set>
 #include <unordered_set>
 #include <type_traits>
+#include <thread>
 
 #include <functional>
 #include <utility>

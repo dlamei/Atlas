@@ -52,7 +52,7 @@ class Sandbox : public Atlas::Layer {
 
 	void on_imgui() override {
 		ImGui::Begin("Settings");
-		ImGui::DragFloat("Triangle Size", &triSize, .001, 0, 1);
+		ImGui::DragFloat("Triangle Size", &triSize, .001f, 0, 1);
 		ImGui::End();
 	}
 

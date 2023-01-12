@@ -136,7 +136,7 @@ namespace Atlas {
 				return;
 			}
 
-			glDrawElements(GL_TRIANGLES, size, GL_UNSIGNED_INT, 0);
+			glDrawElements(GL_TRIANGLES, (int)size, GL_UNSIGNED_INT, 0);
 		}
 
 		void init()
