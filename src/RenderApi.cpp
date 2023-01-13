@@ -139,6 +139,23 @@ namespace Atlas {
 			glDrawElements(GL_TRIANGLES, (int)size, GL_UNSIGNED_INT, 0);
 		}
 
+		void draw_instanced(uint32_t count, uint32_t first)
+		{
+			auto &indexBuffer = get_bound_index_buffer();
+			if (!indexBuffer.is_init()) {
+				CORE_WARN("Render::draw_instanced: no index buffer was bound");
+				return;
+			}
+
+			auto &vertexBuffer = get_bound_vertex_buffer();
+			if (!vertexBuffer.is_init()) {
+				CORE_WARN("Render::draw_instanced: no vertex buffer was bound");
+				return;
+			}
+
+			glDrawArrays(GL_TRIANGLES, 0, count);
+		}
+
 		void init()
 		{
 			gl_utils::init_opengl();

@@ -8,8 +8,9 @@
 
 class Sandbox : public Atlas::Layer {
 
-	const uint32_t size = 200;
+	int32_t size = 1;
 	float triSize = 0.25;
+	bool useCircles{ false };
 
 	Atlas::OrthographicCameraController controller;
 	Atlas::Texture2D texture;
@@ -33,17 +34,22 @@ class Sandbox : public Atlas::Layer {
 
 		Render::begin(Application::get_viewport_color());
 
-		for (uint32_t i = 0; i < size; i++) {
-			for (uint32_t j = 0; j < size; j++) {
+		for (int i = 0; i < size; i++) {
+			for (int j = 0; j < size; j++) {
 				glm::vec3 color{};
 				color.r = (float)i / size;
 				color.g = (float)j / size;
 				color.b = 1 - ((float)i + j) / (size * 2);
-				Render2D::rect({ i, j }, { 1, 1 }, texture, Color::from_norm(color));
+				if (useCircles) {
+					Render2D::circle({ i + 0.5, j + 0.5 }, 0.5, texture, Color::from_norm(color));
+				}
+				else {
+					Render2D::rect({ i, j }, { 1, 1 }, texture, Color::from_norm(color));
+				}
 			}
 		}
 
-		Render2D::tri({ size * triSize, size * triSize }, { size / 2, size - size * triSize }, { size - size * triSize, size * triSize }, { 200, 0, 100, 100 });
+		Render2D::tri({ size * triSize, size * triSize }, { size / 2.0f, size - size * triSize }, { size - size * triSize, size * triSize }, { 200, 0, 100, 100 });
 
 		Render2D::flush();
 		Render::end();
@@ -53,6 +59,13 @@ class Sandbox : public Atlas::Layer {
 		ImGui::ShowDemoWindow();
 
 		ImGui::Begin("Settings");
+		ImGui::Checkbox("circles", &useCircles);
+		int tempSize = size;
+		ImGui::DragInt("size", &tempSize, .1f, 1, 200);
+		if (tempSize != size) {
+			size = tempSize;
+			controller.set_camera(0, (float)size, 0, (float)size);
+		}
 		ImGui::DragFloat("Triangle Size", &triSize, .001f, 0, 1);
 		ImGui::End();
 	}

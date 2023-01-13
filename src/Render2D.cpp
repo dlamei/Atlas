@@ -57,7 +57,7 @@ namespace Atlas::Render2D {
 		s_RenderData.whiteTexture.set_data(&c, 1);
 		s_RenderData.textures[0] = s_RenderData.whiteTexture;
 
-		auto layout = VertexLayout::from(&Vertex::pos, &Vertex::uv, &Vertex::color, &Vertex::texID);
+		auto layout = VertexLayout::from(&Vertex::pos, &Vertex::uv, &Vertex::color, &Vertex::texID, &Vertex::isEllipse);
 		s_RenderData.shader = Shader::load("assets/shaders/default.vert", "assets/shaders/default.frag", layout);
 
 		s_RenderData.vertexBuffer = Buffer::vertex<Vertex>(RenderData::MAX_VERTICES, BufferUsage::DYNAMIC);
@@ -84,16 +84,6 @@ namespace Atlas::Render2D {
 		return s_RenderData.textureIndex++;
 	}
 
-	void rect(const glm::vec2 &pos, const glm::vec2 size, const Texture2D &texture)
-	{
-		rect(pos, size, texture, { 255, 255, 255, 255 });
-	}
-
-	void rect(const glm::vec2 &pos, const glm::vec2 size, Color color)
-	{
-		rect(pos, size, s_RenderData.whiteTexture, color);
-	}
-
 	inline void push_local_vertex(const Vertex &v)
 	{
 		*s_RenderData.vertexPtr = v;
@@ -106,8 +96,7 @@ namespace Atlas::Render2D {
 		s_RenderData.indexPtr++;
 	}
 
-	void rect(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture, Color tint)
-	{
+	void rect_impl(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture, Color tint, int isEllipse) {
 		const uint32_t vertexCount = 4;
 		const uint32_t indexCount = 6;
 
@@ -122,6 +111,7 @@ namespace Atlas::Render2D {
 		Vertex v{};
 		v.color = normColor;
 		v.texID = texID;
+		v.isEllipse = isEllipse;
 
 		v.pos = pos;
 		v.uv = glm::vec2(0, 0);
@@ -150,8 +140,7 @@ namespace Atlas::Render2D {
 		s_RenderData.indexCount += indexCount;
 	}
 
-	void tri(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3, Color color)
-	{
+	void tri_impl(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3, Color color) {
 		const uint32_t vertexCount = 3;
 		const uint32_t indexCount = 3;
 
@@ -165,6 +154,7 @@ namespace Atlas::Render2D {
 		v.color = normColor;
 		v.texID = texID;
 		v.uv = glm::vec2(0, 0);
+		v.isEllipse = 0;
 
 		v.pos = p1;
 		push_local_vertex(v);
@@ -179,6 +169,62 @@ namespace Atlas::Render2D {
 
 		s_RenderData.vertexCount += vertexCount;
 		s_RenderData.indexCount += indexCount;
+	}
+
+	void rect(const glm::vec2 &pos, const glm::vec2 size, const Texture2D &texture)
+	{
+		rect_impl(pos, size, texture, { 255, 255, 255, 255 }, 0);
+	}
+
+	void rect(const glm::vec2 &pos, const glm::vec2 size, Color color)
+	{
+		rect_impl(pos, size, s_RenderData.whiteTexture, color, 0);
+	}
+
+	void rect(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture, Color tint)
+	{
+		rect_impl(pos, size, texture, tint, 0);
+	}
+
+	void ellipse(const glm::vec2 &center, const glm::vec2 &size, Color color)
+	{
+		glm::vec2 s(size.x * 2, size.y * 2);
+		rect_impl(center - s / 2.0f, s, s_RenderData.whiteTexture, { 255 }, 1);
+	}
+
+	void ellipse(const glm::vec2 &center, const glm::vec2 &size, const Texture2D &texture)
+	{
+		glm::vec2 s(size.x * 2, size.y * 2);
+		rect_impl(center - s / 2.0f, s, texture, { 255 }, 1);
+	}
+
+	void ellipse(const glm::vec2 &center, const glm::vec2 &size, const Texture2D &texture, Color tint)
+	{
+		glm::vec2 s(size.x * 2, size.y * 2);
+		rect_impl(center - s / 2.0f, s, texture, tint, 1);
+	}
+
+	void circle(const glm::vec2 &center, float radius, Color color)
+	{
+		glm::vec2 size(radius * 2, radius * 2);
+		rect_impl(center - size / 2.0f, size, s_RenderData.whiteTexture, { 255 }, 1);
+	}
+
+	void circle(const glm::vec2 &center, float radius, const Texture2D &texture)
+	{
+		glm::vec2 size(radius * 2, radius * 2);
+		rect_impl(center - size / 2.0f, size, texture, { 255 }, 1);
+	}
+
+	void circle(const glm::vec2 &center, float radius, const Texture2D &texture, Color color)
+	{
+		glm::vec2 size(radius * 2, radius * 2);
+		rect_impl(center - size / 2.0f, size, texture, color, 1);
+	}
+
+	void tri(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3, Color color)
+	{
+		tri_impl(p1, p2, p3, color);
 	}
 
 	void reset() {

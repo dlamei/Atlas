@@ -66,8 +66,6 @@ namespace Atlas {
 			if (m_Window->is_minimized()) continue;
 
 			update();
-
-
 		}
 	}
 

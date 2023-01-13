@@ -4,10 +4,12 @@ layout (location = 0) in vec3 vPos;
 layout (location = 1) in vec2 vUV;
 layout (location = 2) in vec4 vColor;
 layout (location = 3) in int vTexID;
+layout (location = 4) in int vIsEllipse;
 
 layout (location = 0) out vec2 outUV;
 layout (location = 1) out vec4 outColor;
 layout (location = 2) out int outTexID;
+layout (location = 3) out int outIsEllipse;
 
 struct Camera {
 	mat4 viewProj;
@@ -22,5 +24,6 @@ void main() {
 	outUV = vUV;
 	outColor = vColor;
 	outTexID = vTexID;
+	outIsEllipse = vIsEllipse;
 }
 
