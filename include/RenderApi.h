@@ -24,6 +24,4 @@ namespace Atlas {
 		void init();
 		void resize_viewport(uint32_t width, uint32_t height);
 	}
-
-
 }

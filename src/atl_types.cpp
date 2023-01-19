@@ -161,7 +161,7 @@ namespace Atlas {
 		data = stbi_load(file, &width, &height, &channels, 0);
 
 		if (!data || stbi_failure_reason()) {
-			CORE_WARN("Failed to load image: {}", file);
+			CORE_WARN("Failed to load_vert_frag image: {}", file);
 			CORE_WARN("{}", stbi_failure_reason());
 			return std::nullopt;
 		}
@@ -169,7 +169,7 @@ namespace Atlas {
 		Texture2DCreateInfo info{};
 		info.width = width;
 		info.height = height;
-		info.mipmap = true;
+		info.mipmap = false;
 		info.filter = filter;
 
 		if (channels == 4)
@@ -189,13 +189,30 @@ namespace Atlas {
 		return tex;
 	}
 
-	void Texture2D::bind(const Texture2D &texture, uint32_t indx)
+	void Texture2D::bind(const Texture2D &texture, uint32_t indx, TextureUsageBits usage)
 	{
 		CORE_ASSERT(texture.is_init(), "Texture2D::bind: texture was not initialized!");
-		auto it = s_GlobalBindingContext.textures.find(indx);
-		if (it != s_GlobalBindingContext.textures.end()) return;
-		s_GlobalBindingContext.textures.insert_or_assign(indx, texture);
-		texture.m_Texture->bind(indx);
+
+		if (usage == TextureUsage::SAMPLER) {
+
+			auto it = s_GlobalBindingContext.textures.find(indx);
+			if (it != s_GlobalBindingContext.textures.end()) return;
+			s_GlobalBindingContext.textures.insert_or_assign(indx, texture);
+
+			glActiveTexture(GL_TEXTURE0 + indx);
+			glBindTexture(GL_TEXTURE_2D, texture.m_Texture->id());
+		}
+		else if (usage & (TextureUsage::READ | TextureUsage::WRITE)) {
+			GLenum glUsage = 0;
+			if (usage == TextureUsage::READ) glUsage = GL_READ_ONLY;
+			if (usage == TextureUsage::WRITE) glUsage = GL_WRITE_ONLY;
+			if (usage == (TextureUsage::WRITE | TextureUsage::READ)) glUsage = GL_READ_WRITE;
+
+			glBindImageTexture(indx, texture.m_Texture->id(), 0, GL_FALSE, 0, glUsage, color_format_to_gl_enum(texture.m_Format));
+		}
+		else {
+			CORE_WARN("Texture2D::bind: unknown texture usage: {}", usage);
+		}
 	}
 
 	void Texture2D::unbind(uint32_t index)
@@ -204,6 +221,11 @@ namespace Atlas {
 		glActiveTexture(GL_TEXTURE0 + index);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
+
+	//void Texture2D::bind_image(const Texture2D &texture, uint32_t unit)
+	//{
+	//	glBindImageTexture(unit, texture.m_Texture->id(), 0, GL_FALSE, 0, GL_READ_WRITE, color_format_to_gl_enum(texture.m_Format));
+	//}
 
 	void Texture2D::set_data(const Color *data, size_t size) const
 	{
@@ -333,7 +355,7 @@ namespace Atlas {
 		CORE_ASSERT(framebuffer.is_init(), "Framebuffer::bind: framebuffer was not initialized");
 		if (s_GlobalBindingContext.framebuffer == framebuffer) return;
 		s_GlobalBindingContext.framebuffer = framebuffer;
-		framebuffer.m_Framebuffer->bind();
+		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.m_Framebuffer->id());
 	}
 
 	void Framebuffer::unbind()
@@ -401,9 +423,9 @@ namespace Atlas {
 		glBindBuffer(GL_INDEX_BUFFER, 0);
 	}
 
-	void Buffer::map(const Buffer &buffer, std::function<void(void *)> func)
+	void Buffer::map_write(const Buffer &buffer, std::function<void(void *)> func)
 	{
-		CORE_ASSERT(buffer.type() & (BufferType::UNIFORM | BufferType::VERTEX | BufferType::STORAGE | BufferType::INDEX_U32), "Buffer::map: unsuported buffer type");
+		//CORE_ASSERT(buffer.type() & (BufferType::UNIFORM | BufferType::VERTEX | BufferType::STORAGE | BufferType::INDEX_U32), "Buffer::map_write: unsuported buffer type");
 		void *data = glMapNamedBuffer(buffer.m_Buffer->id(), GL_MAP_WRITE_BIT);
 		func(data);
 		glUnmapNamedBuffer(buffer.m_Buffer->id());
@@ -468,6 +490,16 @@ namespace Atlas {
 		m_Buffer->set_data(data, size);
 	}
 
+	std::vector<void *> Buffer::get_data()
+	{
+		std::vector<void *> buffer;
+		buffer.resize(m_Buffer->size());
+
+		glGetNamedBufferSubData(m_Buffer->id(), 0, m_Buffer->size(), buffer.data());
+
+		return buffer;
+	}
+
 	size_t Buffer::size() const
 	{
 		CORE_ASSERT(m_Buffer, "Buffer::bind: buffer was not initialized!");
@@ -483,30 +515,30 @@ namespace Atlas {
 
 	void VertexLayout::push(VertexAttribute attribute, uint32_t offset)
 	{
-		CORE_ASSERT(m_Layout, "VertexLayout::push: buffer was not initialized!");
+		CORE_ASSERT(m_Layout, "VertexLayout::push: layout was not initialized!");
 		auto [type, count] = vertex_attrib_to_gl_enum(attribute);
 		m_Layout->push_attrib(count, type, offset, m_BufferIndx);
 	}
 
 	void VertexLayout::set_index(uint32_t index)
 	{
-		CORE_ASSERT(m_Layout, "VertexLayout::set_index: buffer was not initialized!");
+		CORE_ASSERT(m_Layout, "VertexLayout::set_index: layout was not initialized!");
 		m_BufferIndx = index;
 	}
 
 	void VertexLayout::bind(const VertexLayout &layout)
 	{
-		CORE_ASSERT(layout.is_init(), "VertexLayout::bind: buffer was not initialized!");
+		CORE_ASSERT(layout.is_init(), "VertexLayout::bind: layout was not initialized!");
 
 		if (s_GlobalBindingContext.layout == layout) return;
 		s_GlobalBindingContext.layout = layout;
-		layout.m_Layout->bind();
+		gl_utils::bind_vertex_layout(layout.m_Layout);
 	}
 
-	void VertexLayout::unbind()
-	{
-		//glBindVertexArray(0);
-	}
+	//void VertexLayout::unbind()
+	//{
+	//	glBindVertexArray(0);
+	//}
 
 	size_t VertexLayout::hash() const
 	{
@@ -517,6 +549,8 @@ namespace Atlas {
 		: m_Layout(info.layout)
 	{
 		gl_utils::GLShaderCreateInfo shaderInfo{};
+
+		if (info.modules.size() == 1 && info.modules.at(0).second == ShaderType::COMPUTE) m_IsCompute = true;
 
 		for (auto &module : info.modules) {
 			shaderInfo.push_back({ module.first, shader_type_to_gl_enum(module.second) });
@@ -544,7 +578,9 @@ namespace Atlas {
 			gl_utils::bind_storage_buffer(pair.second.m_Buffer, shader.m_Shader->get_storage_block_binding(pair.first));
 		}
 
-		VertexLayout::bind(shader.m_Layout);
+		if (!shader.m_IsCompute) {
+			VertexLayout::bind(shader.m_Layout);
+		}
 		//Render::bind_vertexlayout(shader.m_Layout);
 	}
 
@@ -552,15 +588,29 @@ namespace Atlas {
 	{
 		s_GlobalBindingContext.shader = Shader();
 		glUseProgram(0);
-		VertexLayout::unbind();
+		//VertexLayout::unbind();
 	}
 
-	Shader Shader::load(const char *vertexFile, const char *fragFile, const VertexLayout &layout)
+	void Shader::dispatch(const Shader &shader, uint32_t nGroupsX, uint32_t nGroupsY, uint32_t nGroupsZ)
+	{
+		Shader::bind(shader);
+		glDispatchCompute(nGroupsX, nGroupsY, nGroupsZ);
+	}
+
+	Shader Shader::load_vert_frag(const std::string &vertexFile, const std::string &fragFile, const VertexLayout &layout)
 	{
 		ShaderCreateInfo info{};
 		info.layout = layout;
 		info.modules.push_back({ vertexFile, ShaderType::VERTEX });
 		info.modules.push_back({ fragFile, ShaderType::FRAGMENT });
+		return Shader(info);
+	}
+
+	Shader Shader::load_comp(const std::string &file)
+	{
+		ShaderCreateInfo info{};
+		info.layout = VertexLayout::empty();
+		info.modules.push_back({ file, ShaderType::COMPUTE });
 		return Shader(info);
 	}
 

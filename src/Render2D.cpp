@@ -1,6 +1,7 @@
 #include "Render2D.h"
 
 #include <glm/gtx/transform.hpp>
+#include <glm/gtx/matrix_transform_2d.hpp>
 
 #include "RenderApi.h"
 #include "camera.h"
@@ -58,18 +59,19 @@ namespace Atlas::Render2D {
 		s_RenderData.textures[0] = s_RenderData.whiteTexture;
 
 		auto layout = VertexLayout::from(&Vertex::pos, &Vertex::uv, &Vertex::color, &Vertex::texID, &Vertex::isEllipse);
-		s_RenderData.shader = Shader::load("assets/shaders/default.vert", "assets/shaders/default.frag", layout);
+		s_RenderData.shader = Shader::load_vert_frag("assets/shaders/default.vert", "assets/shaders/default.frag", layout);
 
 		s_RenderData.vertexBuffer = Buffer::vertex<Vertex>(RenderData::MAX_VERTICES, BufferUsage::DYNAMIC);
 		s_RenderData.indexBuffer = Buffer::index(RenderData::MAX_INDICES, BufferUsage::DYNAMIC);
 
+		//TODO: generate buffer in shader?
 		Buffer cameraBuffer = Buffer::uniform(glm::ortho(-1, 1, -1, 1), BufferUsage::DYNAMIC);
 		s_RenderData.shader.set("CameraBuffer", cameraBuffer);
 
 		s_RenderData.vertexPtr = s_RenderData.vertices.data();
 		s_RenderData.indexPtr = s_RenderData.indices.data();
 
-		int textureSlots[RenderData::MAX_TEXTURE_SLOTS]{};
+		int textureSlots[RenderData::MAX_TEXTURE_SLOTS];
 		for (int i = 0; i < RenderData::MAX_TEXTURE_SLOTS; i++) textureSlots[i] = i;
 		s_RenderData.shader.set("uTextureSlots[0]", textureSlots, RenderData::MAX_TEXTURE_SLOTS);
 	}
@@ -248,7 +250,6 @@ namespace Atlas::Render2D {
 		}
 
 		Render::draw_indexed(s_RenderData.indexCount);
-
 		reset();
 	}
 

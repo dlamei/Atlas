@@ -92,7 +92,6 @@ namespace gl_utils {
 		glShaderSource(id, 1, &sourcePtr, nullptr);
 		glCompileShader(id);
 
-
 		int32_t res = GL_FALSE;
 		int infoLogLength;
 
@@ -269,11 +268,11 @@ namespace gl_utils {
 		set_texture2D_data(m_ID, m_Width, m_Height, format, data);
 	}
 
-	void GLTexture2D::bind(uint32_t indx)
-	{
-		glActiveTexture(GL_TEXTURE0 + indx);
-		glBindTexture(GL_TEXTURE_2D, m_ID);
-	}
+	//void GLTexture2D::bind(uint32_t indx)
+	//{
+	//	glActiveTexture(GL_TEXTURE0 + indx);
+	//	glBindTexture(GL_TEXTURE_2D, m_ID);
+	//}
 
 	GLBuffer::GLBuffer(const GLBufferCreateInfo &info)
 		:m_Size(info.size)
@@ -344,11 +343,6 @@ namespace gl_utils {
 	GLFramebuffer::~GLFramebuffer()
 	{
 		glDeleteFramebuffers(1, &m_FBO);
-	}
-
-	void GLFramebuffer::bind()
-	{
-		glBindFramebuffer(GL_FRAMEBUFFER, m_FBO);
 	}
 
 	void GLFramebuffer::push_tex_attachment(GLenum attachment, uint32_t texID)
@@ -575,7 +569,7 @@ namespace gl_utils {
 		m_AttribIndx++;
 	}
 
-	void GLVertexLayout::bind()
+	void bind_vertex_layout(const Ref<GLVertexLayout> &layout)
 	{
 		GLint maxAttribs;
 		glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttribs);
@@ -584,7 +578,7 @@ namespace gl_utils {
 			glDisableVertexArrayAttrib(s_GlobalVAO, i);
 		}
 
-		for (auto &attrib : m_Attributes) {
+		for (auto &attrib : layout->get_attributes()) {
 			glEnableVertexArrayAttrib(s_GlobalVAO, attrib.attribIndex);
 			glVertexArrayAttribBinding(s_GlobalVAO, attrib.attribIndex, attrib.bufferIndex);
 

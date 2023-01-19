@@ -94,6 +94,15 @@ namespace Atlas {
 		bool mipmap;
 	};
 
+	namespace TextureUsage {
+		enum _ : uint32_t {
+			SAMPLER = BIT(0),
+			READ = BIT(1),
+			WRITE = BIT(2),
+		};
+	}
+	using TextureUsageBits = uint32_t;
+
 	class Texture2D {
 	public:
 
@@ -105,8 +114,9 @@ namespace Atlas {
 		static Texture2D depth_stencil(uint32_t width, uint32_t height, TextureFilter filter = TextureFilter::LINEAR);
 		static std::optional<Texture2D> load(const char *filePath, TextureFilter filter = TextureFilter::LINEAR);
 
-		static void bind(const Texture2D &texture, uint32_t indx = 0);
+		static void bind(const Texture2D &texture, uint32_t indx = 0, TextureUsageBits usage = TextureUsage::SAMPLER);
 		static void unbind(uint32_t index);
+		//static void bind_image(const Texture2D &texture, uint32_t unit);
 
 		void set_data(const Color *data, size_t size) const;
 
@@ -260,6 +270,8 @@ namespace Atlas {
 			set_data((void *)&value, sizeof(T));
 		}
 
+		std::vector<void *> get_data();
+
 		size_t size() const;
 		inline BufferTypeBits type() const { return m_Types; }
 		inline bool is_init() const { return m_Buffer != nullptr; }
@@ -268,8 +280,7 @@ namespace Atlas {
 		static void unbind_vertex(uint32_t index = 0);
 		static void bind_index(const Buffer &buffer);
 		static void unbind_index();
-
-		static void map(const Buffer &buffer, std::function<void(void *)> func);
+		static void map_write(const Buffer &buffer, std::function<void(void *)> func);
 
 		friend bool operator==(const Buffer &b1, const Buffer &b2);
 		friend bool operator!=(const Buffer &b1, const Buffer &b2);
@@ -352,7 +363,7 @@ namespace Atlas {
 		void set_index(uint32_t index);
 
 		static void bind(const VertexLayout &layout);
-		static void unbind();
+		//static void unbind();
 
 		template <typename T, typename U>
 		void push(VertexAttribute attribute, U T:: *member) {
@@ -417,10 +428,12 @@ namespace Atlas {
 		Shader() = default;
 		Shader(const ShaderCreateInfo &info);
 
-		static void bind(const Shader &info);
+		static void bind(const Shader &shader);
 		static void unbind();
+		static void dispatch(const Shader &shader, uint32_t nGroupsX, uint32_t nGroupsY, uint32_t nGroupsZ);
 
-		static Shader load(const char *vertexFile, const char *fragFile, const VertexLayout &layout);
+		static Shader load_vert_frag(const std::string &vertexFile, const std::string &fragFile, const VertexLayout &layout);
+		static Shader load_comp(const std::string &file);
 
 		inline bool is_init() const { return m_Shader != nullptr; }
 
@@ -467,6 +480,7 @@ namespace Atlas {
 		Ref<gl_utils::GLShader> m_Shader;
 		std::unordered_map<std::string, Buffer> m_UniformBuffers;
 		std::unordered_map<std::string, Buffer> m_StorageBuffers;
+		bool m_IsCompute{ false };
 
 		VertexLayout m_Layout;
 	};

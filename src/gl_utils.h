@@ -69,12 +69,11 @@ namespace gl_utils {
 		~GLTexture2D();
 
 		void set_data(const void *data, GLenum format);
-		void bind(uint32_t indx = 0);
 
-		inline uint32_t id() { return m_ID; }
-		inline uint32_t width() { return m_Width; }
-		inline uint32_t height() { return m_Height; }
-		inline bool has_mipmap() { return m_Mipmap; }
+		inline uint32_t id() const { return m_ID; }
+		inline uint32_t width()  const { return m_Width; }
+		inline uint32_t height() const { return m_Height; }
+		inline bool has_mipmap() const { return m_Mipmap; }
 
 	private:
 		uint32_t m_ID{ 0 };
@@ -88,7 +87,6 @@ namespace gl_utils {
 		GLenum usage;
 		size_t size;
 		void *data;
-		//std::pair<void *, size_t> data{ nullptr, 0 }; //ptr to data, size
 	};
 
 	class GLBuffer {
@@ -100,8 +98,8 @@ namespace gl_utils {
 
 		void set_data(void *data, size_t size);
 
-		inline size_t size() { return m_Size; }
-		inline uint32_t id() { return m_ID; }
+		inline size_t size() const { return m_Size; }
+		inline uint32_t id() const { return m_ID; }
 
 	private:
 		size_t m_Size;
@@ -155,7 +153,6 @@ namespace gl_utils {
 	private:
 		uint32_t m_ID{ 0 };
 		GLShaderReflectionData m_ReflectionData;
-		//std::unordered_map<std::string, int> m_UniformCache;
 	};
 
 	void bind_shader(Ref<GLShader> shader);
@@ -173,7 +170,7 @@ namespace gl_utils {
 		GLRenderbuffer(const GLRenderbuffer &) = delete;
 		~GLRenderbuffer();
 
-		inline uint32_t id() { return m_RBO; }
+		inline uint32_t id() const { return m_RBO; }
 
 	private:
 		uint32_t m_RBO;
@@ -189,13 +186,13 @@ namespace gl_utils {
 		GLFramebuffer(const GLFramebuffer &) = delete;
 		~GLFramebuffer();
 
-		void bind();
-
 		void push_tex_attachment(GLenum attachment, uint32_t texID);
 		void push_rbo_attachment(GLenum attachment, uint32_t rbo);
 
 		bool check_status();
 		GLenum get_status();
+
+		inline uint32_t id() const { return m_FBO; }
 
 	private:
 		uint32_t m_FBO;
@@ -219,11 +216,13 @@ namespace gl_utils {
 		~GLVertexLayout();
 
 		void push_attrib(uint32_t count, GLenum type, uint32_t offset, uint32_t bufferIndx = 0);
-		void bind();
+
+		inline std::vector<AttribInfo> &get_attributes() { return m_Attributes; };
 
 	private:
-		//uint32_t m_VAO{ 0 };
 		uint32_t m_AttribIndx{ 0 };
 		std::vector<AttribInfo> m_Attributes{};
 	};
+
+	void bind_vertex_layout(const Ref<GLVertexLayout> &layout);
 }
