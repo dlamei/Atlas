@@ -36,7 +36,7 @@ namespace Atlas {
 		m_ImGuiLayer = make_ref<ImGuiLayer>();
 		push_layer(m_ImGuiLayer);
 
-		m_ColorBuffer = Texture2D::color((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+		m_ColorBuffer = Texture2D::rgba((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 		m_DepthBuffer = Texture2D::depth((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 
 		//m_RenderThread = std::thread(Application::update_frame);
@@ -183,6 +183,11 @@ namespace Atlas {
 		return get_instance()->m_ViewportHovered;
 	}
 
+	float Application::get_time()
+	{
+		return (float)get_instance()->m_Window->get_time();
+	}
+
 	Texture2D &Application::get_viewport_color()
 	{
 		return get_instance()->m_ColorBuffer;
@@ -241,7 +246,7 @@ namespace Atlas {
 
 		if (e.width == 0 || e.height == 0) return false;
 
-		m_ColorBuffer = Texture2D::color(e.width, e.height, TextureFilter::NEAREST);
+		m_ColorBuffer = Texture2D::rgba(e.width, e.height, TextureFilter::NEAREST);
 		m_DepthBuffer = Texture2D::depth(e.width, e.height, TextureFilter::NEAREST);
 
 		return false;

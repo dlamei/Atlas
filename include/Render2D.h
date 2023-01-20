@@ -17,9 +17,13 @@ namespace Atlas::Render2D {
 
 	void init();
 
-	void rect(const glm::vec2 &pos, const glm::vec2 size, const Texture2D &texture);
-	void rect(const glm::vec2 &pos, const glm::vec2 size, Color color);
+	void rect(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture);
+	void rect(const glm::vec2 &pos, const glm::vec2 &size, Color color);
 	void rect(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture, Color tint);
+
+	void square(const glm::vec2 &pos, float size, const Texture2D &texture);
+	void square(const glm::vec2 &pos, float size, Color color);
+	void square(const glm::vec2 &pos, float size, const Texture2D &texture, Color tint);
 
 	void ellipse(const glm::vec2 &center, const glm::vec2 &size, Color color);
 	void ellipse(const glm::vec2 &center, const glm::vec2 &size, const Texture2D &texture);

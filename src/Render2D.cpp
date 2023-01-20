@@ -53,7 +53,7 @@ namespace Atlas::Render2D {
 
 		s_RenderData.init = true;
 
-		s_RenderData.whiteTexture = Texture2D::color(1, 1);
+		s_RenderData.whiteTexture = Texture2D::rgba(1, 1);
 		Color c = { 255, 255, 255 };
 		s_RenderData.whiteTexture.set_data(&c, 1);
 		s_RenderData.textures[0] = s_RenderData.whiteTexture;
@@ -66,7 +66,7 @@ namespace Atlas::Render2D {
 
 		//TODO: generate buffer in shader?
 		Buffer cameraBuffer = Buffer::uniform(glm::ortho(-1, 1, -1, 1), BufferUsage::DYNAMIC);
-		s_RenderData.shader.set("CameraBuffer", cameraBuffer);
+		s_RenderData.shader.bind("CameraBuffer", cameraBuffer);
 
 		s_RenderData.vertexPtr = s_RenderData.vertices.data();
 		s_RenderData.indexPtr = s_RenderData.indices.data();
@@ -98,7 +98,7 @@ namespace Atlas::Render2D {
 		s_RenderData.indexPtr++;
 	}
 
-	void rect_impl(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture, Color tint, int isEllipse) {
+	void rect_impl(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture, Color tint, bool isEllipse) {
 		const uint32_t vertexCount = 4;
 		const uint32_t indexCount = 6;
 
@@ -113,7 +113,7 @@ namespace Atlas::Render2D {
 		Vertex v{};
 		v.color = normColor;
 		v.texID = texID;
-		v.isEllipse = isEllipse;
+		v.isEllipse = (int)isEllipse;
 
 		v.pos = pos;
 		v.uv = glm::vec2(0, 0);
@@ -173,19 +173,34 @@ namespace Atlas::Render2D {
 		s_RenderData.indexCount += indexCount;
 	}
 
-	void rect(const glm::vec2 &pos, const glm::vec2 size, const Texture2D &texture)
+	void rect(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture)
 	{
-		rect_impl(pos, size, texture, { 255, 255, 255, 255 }, 0);
+		rect_impl(pos, size, texture, { 255 }, false);
 	}
 
-	void rect(const glm::vec2 &pos, const glm::vec2 size, Color color)
+	void rect(const glm::vec2 &pos, const glm::vec2 &size, Color color)
 	{
-		rect_impl(pos, size, s_RenderData.whiteTexture, color, 0);
+		rect_impl(pos, size, s_RenderData.whiteTexture, color, false);
 	}
 
 	void rect(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture, Color tint)
 	{
-		rect_impl(pos, size, texture, tint, 0);
+		rect_impl(pos, size, texture, tint, false);
+	}
+
+	void square(const glm::vec2 &pos, float size, const Texture2D &texture)
+	{
+		rect_impl(pos, { size, size }, texture, { 255 }, false);
+	}
+
+	void square(const glm::vec2 &pos, float size, Color color)
+	{
+		rect_impl(pos, { size, size }, s_RenderData.whiteTexture, color, false);
+	}
+
+	void square(const glm::vec2 &pos, float size, const Texture2D &texture, Color tint)
+	{
+		rect_impl(pos, { size, size }, texture, tint, false);
 	}
 
 	void ellipse(const glm::vec2 &center, const glm::vec2 &size, Color color)
@@ -197,31 +212,31 @@ namespace Atlas::Render2D {
 	void ellipse(const glm::vec2 &center, const glm::vec2 &size, const Texture2D &texture)
 	{
 		glm::vec2 s(size.x * 2, size.y * 2);
-		rect_impl(center - s / 2.0f, s, texture, { 255 }, 1);
+		rect_impl(center - s / 2.0f, s, texture, { 255 }, true);
 	}
 
 	void ellipse(const glm::vec2 &center, const glm::vec2 &size, const Texture2D &texture, Color tint)
 	{
 		glm::vec2 s(size.x * 2, size.y * 2);
-		rect_impl(center - s / 2.0f, s, texture, tint, 1);
+		rect_impl(center - s / 2.0f, s, texture, tint, true);
 	}
 
 	void circle(const glm::vec2 &center, float radius, Color color)
 	{
 		glm::vec2 size(radius * 2, radius * 2);
-		rect_impl(center - size / 2.0f, size, s_RenderData.whiteTexture, { 255 }, 1);
+		rect_impl(center - size / 2.0f, size, s_RenderData.whiteTexture, { 255 }, true);
 	}
 
 	void circle(const glm::vec2 &center, float radius, const Texture2D &texture)
 	{
 		glm::vec2 size(radius * 2, radius * 2);
-		rect_impl(center - size / 2.0f, size, texture, { 255 }, 1);
+		rect_impl(center - size / 2.0f, size, texture, { 255 }, true);
 	}
 
 	void circle(const glm::vec2 &center, float radius, const Texture2D &texture, Color color)
 	{
 		glm::vec2 size(radius * 2, radius * 2);
-		rect_impl(center - size / 2.0f, size, texture, color, 1);
+		rect_impl(center - size / 2.0f, size, texture, color, true);
 	}
 
 	void tri(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3, Color color)

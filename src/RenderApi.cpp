@@ -4,6 +4,21 @@
 
 namespace Atlas {
 
+	GLenum barrier_to_gl_barrier(BarrierBits barriers) {
+		GLenum glBarrier = 0;
+
+		if (barriers & Barrier::ALL) glBarrier |= GL_ALL_BARRIER_BITS;
+		if (barriers & Barrier::IMAGE_ACCESS) glBarrier |= GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+
+		return glBarrier;
+	}
+
+	void memory_barrier(BarrierBits barriers)
+	{
+		GLenum barrier = barrier_to_gl_barrier(barriers);
+		glMemoryBarrier(barrier);
+	}
+
 	namespace Render {
 
 		struct CachedFramebuffer {

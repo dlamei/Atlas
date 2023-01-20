@@ -1,7 +1,7 @@
 #version 430 core
 layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
-layout(rgba8, binding = 0) uniform image2D imgOutput;
+layout(rgba8) uniform image2D imgOutput;
 
 uniform float width;
 uniform float time; 
@@ -12,7 +12,7 @@ void main() {
     
     float speed = 1000;
 
-    value.x = mod(float(texelCoord.x) + time * speed, width) / (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
-    value.y = mod(float(texelCoord.y) + time * speed, width)/(gl_NumWorkGroups.y * gl_WorkGroupSize.y);
+    value.r = mod(float(texelCoord.x) + time * speed, width) / (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
+    value.g = mod(float(texelCoord.y) + time * speed, width)/(gl_NumWorkGroups.y * gl_WorkGroupSize.y);
     imageStore(imgOutput, texelCoord, value);
 }

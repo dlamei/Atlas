@@ -118,7 +118,7 @@ namespace Atlas {
 		m_Texture = make_ref<gl_utils::GLTexture2D>(texInfo);
 	}
 
-	Texture2D Texture2D::color(uint32_t width, uint32_t height, TextureFilter filter)
+	Texture2D Texture2D::rgba(uint32_t width, uint32_t height, TextureFilter filter)
 	{
 		Texture2DCreateInfo info{};
 		info.width = width;
@@ -169,7 +169,7 @@ namespace Atlas {
 		Texture2DCreateInfo info{};
 		info.width = width;
 		info.height = height;
-		info.mipmap = false;
+		info.mipmap = true;
 		info.filter = filter;
 
 		if (channels == 4)
@@ -289,7 +289,7 @@ namespace Atlas {
 			}
 
 			if (!is_color_attachment(a.format())) {
-				CORE_WARN("Framebuffer::Framebuffer: expected color format, found: {}", (uint32_t)a.format());
+				CORE_WARN("Framebuffer::Framebuffer: expected rgba format, found: {}", (uint32_t)a.format());
 				continue;
 			}
 
@@ -319,7 +319,7 @@ namespace Atlas {
 	{
 		CORE_ASSERT(m_Framebuffer, "Framebuffer::set_color_attachment: framebuffer was not initialized");
 		if (!is_color_attachment(texture.format())) {
-			CORE_WARN("Framebuffer::set_color_attachment: texture has no color format");
+			CORE_WARN("Framebuffer::set_color_attachment: texture has no rgba format");
 			return;
 		}
 
@@ -331,7 +331,7 @@ namespace Atlas {
 	{
 		CORE_ASSERT(m_Framebuffer, "Framebuffer::set_depth_stencil_texture: framebuffer was not initialized");
 		if (is_color_attachment(texture.format())) {
-			CORE_WARN("Framebuffer::set_depth_stencil_texture: texture has color format");
+			CORE_WARN("Framebuffer::set_depth_stencil_texture: texture has rgba format");
 			return;
 		}
 
@@ -578,6 +578,12 @@ namespace Atlas {
 			gl_utils::bind_storage_buffer(pair.second.m_Buffer, shader.m_Shader->get_storage_block_binding(pair.first));
 		}
 
+		for (auto &pair : shader.m_Textures) {
+			const Texture2D &tex = pair.second.texture;
+			const TextureUsageBits usages = pair.second.usages;
+			Texture2D::bind(tex, shader.m_Shader->get_uniform_location(pair.first), usages);
+		}
+
 		if (!shader.m_IsCompute) {
 			VertexLayout::bind(shader.m_Layout);
 		}
@@ -654,18 +660,26 @@ namespace Atlas {
 	IMPL_SHADER_FUNC(const glm::mat3 &, set_mat3);
 	IMPL_SHADER_FUNC(const glm::mat4 &, set_mat4);
 
-	void Shader::set(const std::string &name, const Buffer &buffer)
+	void Shader::bind(const std::string &name, const Buffer &buffer)
 	{
-		CORE_ASSERT(buffer.m_Types & (BufferType::UNIFORM | BufferType::STORAGE), "Shader::set: buffer was not initialized as unifrom / storage buffer!");
+		CORE_ASSERT(buffer.m_Types & (BufferType::UNIFORM | BufferType::STORAGE), "Shader::bind: buffer was not initialized as unifrom / storage buffer!");
 
 		if (buffer.m_Types & BufferType::UNIFORM) {
-			if (m_Shader->get_uniform_block_binding(name) == -1) CORE_WARN("Shader::set: could not find Uniform Buffer: {}", name);
+			if (m_Shader->get_uniform_block_binding(name) == -1) CORE_WARN("Shader::bind: could not find Uniform Buffer: {}", name);
 			m_UniformBuffers.insert_or_assign(name, buffer);
 		}
 		else if (buffer.m_Types & BufferType::STORAGE) {
-			if (m_Shader->get_storage_block_binding(name) == -1) CORE_WARN("Shader::set: could not find Storage Buffer: {}", name);
+			if (m_Shader->get_storage_block_binding(name) == -1) CORE_WARN("Shader::bind: could not find Storage Buffer: {}", name);
 			m_StorageBuffers.insert_or_assign(name, buffer);
 		}
+	}
+
+	void Shader::bind(const std::string &name, const Texture2D &texture, TextureUsageBits usages)
+	{
+		BoundTextureInfo info{};
+		info.texture = texture;
+		info.usages = usages;
+		m_Textures.insert_or_assign(name, info);
 	}
 
 	Buffer &Shader::get_uniform_buffer(const char *name)

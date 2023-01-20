@@ -64,7 +64,7 @@ namespace gl_utils {
 
 	void set_texture2D_data(uint32_t texture, uint32_t width, uint32_t height, GLenum dataFormat, const void *data) {
 		if (!texture) {
-			CORE_WARN("Texture2D: can not set data, Texture is not initialized!");
+			CORE_WARN("Texture2D: can not bind data, Texture is not initialized!");
 			return;
 		}
 

@@ -96,9 +96,9 @@ namespace Atlas {
 
 	namespace TextureUsage {
 		enum _ : uint32_t {
-			SAMPLER = BIT(0),
-			READ = BIT(1),
-			WRITE = BIT(2),
+			SAMPLER = 1 << 0,
+			READ = 1 << 1,
+			WRITE = 1 << 2,
 		};
 	}
 	using TextureUsageBits = uint32_t;
@@ -109,7 +109,7 @@ namespace Atlas {
 		Texture2D() = default;
 		Texture2D(const Texture2DCreateInfo &info);
 
-		static Texture2D color(uint32_t width, uint32_t height, TextureFilter filter = TextureFilter::LINEAR);
+		static Texture2D rgba(uint32_t width, uint32_t height, TextureFilter filter = TextureFilter::LINEAR);
 		static Texture2D depth(uint32_t width, uint32_t height, TextureFilter filter = TextureFilter::LINEAR);
 		static Texture2D depth_stencil(uint32_t width, uint32_t height, TextureFilter filter = TextureFilter::LINEAR);
 		static std::optional<Texture2D> load(const char *filePath, TextureFilter filter = TextureFilter::LINEAR);
@@ -198,10 +198,10 @@ namespace Atlas {
 
 	namespace BufferType {
 		enum _ : uint32_t {
-			VERTEX = BIT(0),
-			INDEX_U32 = BIT(1),
-			UNIFORM = BIT(2),
-			STORAGE = BIT(3),
+			VERTEX = 1 << 0,
+			INDEX_U32 = 1 << 1,
+			UNIFORM = 1 << 2,
+			STORAGE = 1 << 3,
 		};
 	}
 	using BufferTypeBits = uint32_t;
@@ -311,7 +311,7 @@ namespace Atlas {
 		static constexpr bool value = false;
 	};
 
-#define DEFINE_ATTRIBUTE_TRAIT(TYPE, ENUM) \
+#define DEFINE_VERTEX_ATTRIBUTE_TRAIT(TYPE, ENUM) \
 	template <> \
 	struct vertex_attribute<TYPE> { \
 		static constexpr VertexAttribute attribute = VertexAttribute::ENUM; \
@@ -321,21 +321,21 @@ namespace Atlas {
 		static constexpr bool value = true; \
 	}
 
-	DEFINE_ATTRIBUTE_TRAIT(int, INT);
-	DEFINE_ATTRIBUTE_TRAIT(glm::ivec1, INT);
-	DEFINE_ATTRIBUTE_TRAIT(glm::ivec2, INT2);
-	DEFINE_ATTRIBUTE_TRAIT(glm::ivec3, INT3);
-	DEFINE_ATTRIBUTE_TRAIT(glm::ivec4, INT4);
-	DEFINE_ATTRIBUTE_TRAIT(uint32_t, UINT);
-	DEFINE_ATTRIBUTE_TRAIT(glm::uvec1, UINT);
-	DEFINE_ATTRIBUTE_TRAIT(glm::uvec2, UINT2);
-	DEFINE_ATTRIBUTE_TRAIT(glm::uvec3, UINT3);
-	DEFINE_ATTRIBUTE_TRAIT(glm::uvec4, UINT4);
-	DEFINE_ATTRIBUTE_TRAIT(float, FLOAT);
-	DEFINE_ATTRIBUTE_TRAIT(glm::vec1, FLOAT);
-	DEFINE_ATTRIBUTE_TRAIT(glm::vec2, FLOAT2);
-	DEFINE_ATTRIBUTE_TRAIT(glm::vec3, FLOAT3);
-	DEFINE_ATTRIBUTE_TRAIT(glm::vec4, FLOAT4);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(int, INT);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(glm::ivec1, INT);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(glm::ivec2, INT2);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(glm::ivec3, INT3);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(glm::ivec4, INT4);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(uint32_t, UINT);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(glm::uvec1, UINT);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(glm::uvec2, UINT2);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(glm::uvec3, UINT3);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(glm::uvec4, UINT4);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(float, FLOAT);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(glm::vec1, FLOAT);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(glm::vec2, FLOAT2);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(glm::vec3, FLOAT3);
+	DEFINE_VERTEX_ATTRIBUTE_TRAIT(glm::vec4, FLOAT4);
 
 	class VertexLayout {
 	public:
@@ -438,9 +438,9 @@ namespace Atlas {
 		inline bool is_init() const { return m_Shader != nullptr; }
 
 		template <typename T>
-		void set(const std::string &name, T value)
+		void bind(const std::string &name, T value)
 		{
-			CORE_ASSERT(false, "Shader::set not defined for type: {}", typeid(T).name());
+			CORE_ASSERT(false, "Shader::bind not defined for type: {}", typeid(T).name());
 		}
 
 		void set(const std::string &name, int32_t value);
@@ -464,7 +464,8 @@ namespace Atlas {
 		void set(const std::string &name, const glm::mat3 &value);
 		void set(const std::string &name, const glm::mat4 &value);
 
-		void set(const std::string &name, const Buffer &buffer);
+		void bind(const std::string &name, const Buffer &buffer);
+		void bind(const std::string &name, const Texture2D &texture, TextureUsageBits usages = TextureUsage::SAMPLER);
 
 		Buffer &get_uniform_buffer(const char *name);
 		Buffer &get_storage_buffer(const char *name);
@@ -477,9 +478,16 @@ namespace Atlas {
 		size_t hash() const;
 
 	private:
+
+		struct BoundTextureInfo {
+			Texture2D texture;
+			TextureUsageBits usages;
+		};
+
 		Ref<gl_utils::GLShader> m_Shader;
 		std::unordered_map<std::string, Buffer> m_UniformBuffers;
 		std::unordered_map<std::string, Buffer> m_StorageBuffers;
+		std::unordered_map<std::string, BoundTextureInfo> m_Textures;
 		bool m_IsCompute{ false };
 
 		VertexLayout m_Layout;

@@ -55,6 +55,7 @@ namespace Atlas {
 		static bool is_mouse_pressed(int button);
 		static bool is_viewport_focused();
 		static bool is_viewport_hovered();
+		static float get_time();
 		static Texture2D &get_viewport_color();
 		static Texture2D &get_viewport_depth();
 

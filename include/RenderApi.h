@@ -4,6 +4,16 @@
 
 namespace Atlas {
 
+	namespace Barrier {
+		enum _ : uint32_t {
+			ALL = 1 << 0,
+			IMAGE_ACCESS = 1 << 1,
+		};
+	}
+	using BarrierBits = uint32_t;
+
+	void memory_barrier(BarrierBits barriers);
+
 	namespace Render {
 
 		void frame_start();

@@ -132,10 +132,10 @@ namespace Atlas {
 
 	namespace EventCategory {
 		enum _ : uint32_t {
-			Application = BIT(0),
-			Input = BIT(1),
-			Keyboard = BIT(2),
-			Mouse = BIT(3),
+			Application = 1 << 0,
+			Input = 1 << 1,
+			Keyboard = 1 << 2,
+			Mouse = 1 << 3,
 		};
 	}
 
