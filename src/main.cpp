@@ -15,11 +15,16 @@ class Sandbox : public Atlas::Layer {
 	Atlas::Texture2D compOut;
 
 	void on_attach() override {
-		Atlas::Render2D::init();
+		using namespace Atlas;
+		Render2D::init();
 		controller.set_camera(0, (float)size, 0, (float)size);
 		//texture = Atlas::Texture2D::load("assets/images/uv_checker.png", Atlas::TextureFilter::NEAREST).value();
-		computeShader = Atlas::Shader::load_comp("assets/shaders/tex.comp");
-		compOut = Atlas::Texture2D::rgba(1024, 1024);
+
+		computeShader = Shader::load_comp("assets/shaders/tex.comp");
+		compOut = Texture2D::rgba(1024, 1024);
+
+		computeShader.bind("imgOutput", compOut, TextureUsage::READ | TextureUsage::WRITE);
+		computeShader.set("width", (float)compOut.width());
 	}
 
 	void on_detach() override {
@@ -32,8 +37,6 @@ class Sandbox : public Atlas::Layer {
 
 		Render2D::set_camera(controller.get_camera());
 
-		computeShader.bind("imgOutput", compOut, TextureUsage::READ | TextureUsage::WRITE);
-		computeShader.set("width", (float)compOut.width());
 		computeShader.set("time", Application::get_time());
 		Shader::dispatch(computeShader, compOut.width() / 32, compOut.height() / 32, 1);
 

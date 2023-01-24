@@ -630,12 +630,25 @@ namespace gl_utils {
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
 		glDebugMessageCallback(gl_debug_msg, 0);
 
+		bool supported = false;
+		{
+			GLint numExtensions;
+			glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
+			for (int i = 0; i < numExtensions; ++i) {
+				if (std::string((const char *)glGetStringi(GL_EXTENSIONS, i)) == "GL_ARB_compute_shader") {
+					supported = true;
+					break;
+				}
+			}
+		}
+
 		glCreateVertexArrays(1, &s_GlobalVAO);
 		glBindVertexArray(s_GlobalVAO);
 
 		CORE_TRACE("OpenGL Info:");
 		CORE_TRACE(" vendor:	{}", (const char *)glGetString(GL_VENDOR));
 		CORE_TRACE(" renderer:	{}", (const char *)glGetString(GL_RENDERER));
-		CORE_TRACE(" version:	{}\n", (const char *)glGetString(GL_VERSION));
+		CORE_TRACE(" version:	{}", (const char *)glGetString(GL_VERSION));
+		CORE_TRACE(" compute support:	{}\n", supported);
 	}
 }

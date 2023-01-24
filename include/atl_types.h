@@ -110,6 +110,7 @@ namespace Atlas {
 		Texture2D(const Texture2DCreateInfo &info);
 
 		static Texture2D rgba(uint32_t width, uint32_t height, TextureFilter filter = TextureFilter::LINEAR);
+		static Texture2D rgb(uint32_t width, uint32_t height, TextureFilter filter = TextureFilter::LINEAR);
 		static Texture2D depth(uint32_t width, uint32_t height, TextureFilter filter = TextureFilter::LINEAR);
 		static Texture2D depth_stencil(uint32_t width, uint32_t height, TextureFilter filter = TextureFilter::LINEAR);
 		static std::optional<Texture2D> load(const char *filePath, TextureFilter filter = TextureFilter::LINEAR);

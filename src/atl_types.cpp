@@ -129,6 +129,17 @@ namespace Atlas {
 		return Texture2D(info);
 	}
 
+	Texture2D Texture2D::rgb(uint32_t width, uint32_t height, TextureFilter filter)
+	{
+		Texture2DCreateInfo info{};
+		info.width = width;
+		info.height = height;
+		info.mipmap = false;
+		info.filter = filter;
+		info.format = ColorFormat::R8G8B8;
+		return Texture2D(info);
+	}
+
 	Texture2D Texture2D::depth(uint32_t width, uint32_t height, TextureFilter filter)
 	{
 		Texture2DCreateInfo info{};
