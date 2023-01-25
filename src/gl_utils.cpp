@@ -169,10 +169,14 @@ namespace gl_utils {
 				location = glGetUniformLocation(program, name.c_str());
 				if (location == -1) continue;
 
+				int params = 0;
+				glGetUniformiv(program, location, &params);
+
 				GLUniformInfo info{};
 				info.location = location;
 				info.type = type;
 				info.size;
+				info.value = params;
 
 				data->uniforms.insert({ name, info });
 			}

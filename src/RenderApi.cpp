@@ -171,6 +171,11 @@ namespace Atlas {
 			glDrawArrays(GL_TRIANGLES, 0, count);
 		}
 
+		void flush()
+		{
+			glFlush();
+		}
+
 		void init()
 		{
 			gl_utils::init_opengl();

@@ -7,6 +7,11 @@
 
 namespace Atlas::Render2D {
 
+	struct RenderStats {
+		uint32_t drawCalls = 0;
+		uint32_t trisDrawn = 0;
+	};
+
 	struct Vertex {
 		glm::vec2 pos;
 		glm::vec2 uv;
@@ -39,4 +44,8 @@ namespace Atlas::Render2D {
 
 	void set_camera(const Camera &camera);
 	void set_view_proj(const glm::mat4 &viewProj);
+
+	void reset_stats();
+	RenderStats get_stats();
+
 }

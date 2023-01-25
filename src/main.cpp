@@ -36,6 +36,7 @@ class Sandbox : public Atlas::Layer {
 		controller.on_update(ts);
 
 		Render2D::set_camera(controller.get_camera());
+		Render2D::reset_stats();
 
 		computeShader.set("time", Application::get_time());
 		Shader::dispatch(computeShader, compOut.width() / 32, compOut.height() / 32, 1);
@@ -51,6 +52,11 @@ class Sandbox : public Atlas::Layer {
 		}
 
 		Render2D::flush();
+
+		Render2D::RenderStats stats = Render2D::get_stats();
+		ImGui::Begin("RenderStats");
+		ImGui::Text("draw calls: %d", stats.drawCalls);
+		ImGui::End();
 
 		Render::end();
 

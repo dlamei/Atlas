@@ -114,7 +114,6 @@ namespace Atlas {
 		texInfo.mipmap = info.mipmap;
 		texInfo.minFilter = texture_min_filter_to_gl_enum(info.filter, info.mipmap);
 		texInfo.magFilter = texture_mag_filter_to_gl_enum(info.filter, info.mipmap);
-
 		m_Texture = make_ref<gl_utils::GLTexture2D>(texInfo);
 	}
 
@@ -592,7 +591,8 @@ namespace Atlas {
 		for (auto &pair : shader.m_Textures) {
 			const Texture2D &tex = pair.second.texture;
 			const TextureUsageBits usages = pair.second.usages;
-			Texture2D::bind(tex, shader.m_Shader->get_uniform_location(pair.first), usages);
+
+			Texture2D::bind(tex, pair.second.bindingPoint, usages);
 		}
 
 		if (!shader.m_IsCompute) {
@@ -687,9 +687,12 @@ namespace Atlas {
 
 	void Shader::bind(const std::string &name, const Texture2D &texture, TextureUsageBits usages)
 	{
+		CORE_ASSERT(m_Shader->get_uniform_location(name) != -1, "Shader::bind: could not find uniform: {}", name);
+
 		BoundTextureInfo info{};
 		info.texture = texture;
 		info.usages = usages;
+		info.bindingPoint = m_Shader->get_uniform_info(name)->value;
 		m_Textures.insert_or_assign(name, info);
 	}
 

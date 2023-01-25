@@ -19,6 +19,7 @@ namespace gl_utils {
 		GLenum type;
 		int location;
 		int size;
+		int value;
 	};
 
 	struct GLUniformBlockInfo {

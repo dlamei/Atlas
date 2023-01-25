@@ -7,7 +7,6 @@
 #include "camera.h"
 #include "atl_types.h"
 
-
 namespace Atlas::Render2D {
 
 	struct GPUCameraData {
@@ -15,8 +14,8 @@ namespace Atlas::Render2D {
 	};
 
 	struct RenderData {
-		static const uint32_t MAX_VERTICES = 4 * 100;
-		static const uint32_t MAX_INDICES = 6 * 100;
+		static const uint32_t MAX_VERTICES = 4 * 1000;
+		static const uint32_t MAX_INDICES = 6 * 1000;
 		static const uint32_t MAX_TEXTURE_SLOTS = 32;
 
 		bool init{ false };
@@ -40,6 +39,8 @@ namespace Atlas::Render2D {
 		uint32_t *indexPtr{ nullptr };
 
 		Texture2D whiteTexture;
+
+		RenderStats stats;
 	};
 
 	static RenderData s_RenderData;
@@ -140,6 +141,7 @@ namespace Atlas::Render2D {
 
 		s_RenderData.vertexCount += vertexCount;
 		s_RenderData.indexCount += indexCount;
+		s_RenderData.stats.trisDrawn += 2;
 	}
 
 	void tri_impl(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3, Color color) {
@@ -171,6 +173,7 @@ namespace Atlas::Render2D {
 
 		s_RenderData.vertexCount += vertexCount;
 		s_RenderData.indexCount += indexCount;
+		s_RenderData.stats.trisDrawn++;
 	}
 
 	void rect(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture)
@@ -253,6 +256,7 @@ namespace Atlas::Render2D {
 	}
 
 	void flush() {
+		s_RenderData.stats.drawCalls++;
 		s_RenderData.vertexBuffer.set_data(s_RenderData.vertices.data(), s_RenderData.vertexCount * sizeof(Vertex));
 		s_RenderData.indexBuffer.set_data(s_RenderData.indices.data(), s_RenderData.indexCount * sizeof(uint32_t));
 
@@ -265,6 +269,7 @@ namespace Atlas::Render2D {
 		}
 
 		Render::draw_indexed(s_RenderData.indexCount);
+		Render::flush();
 		reset();
 	}
 
@@ -281,5 +286,15 @@ namespace Atlas::Render2D {
 		if (viewProj == s_RenderData.viewProj) return;
 		s_RenderData.viewProj = viewProj;
 		s_RenderData.shader.get_uniform_buffer("CameraBuffer").set_data(s_RenderData.viewProj);
+	}
+
+	void reset_stats()
+	{
+		s_RenderData.stats = RenderStats{};
+	}
+
+	RenderStats get_stats()
+	{
+		return s_RenderData.stats;
 	}
 }

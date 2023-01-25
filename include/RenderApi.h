@@ -30,6 +30,7 @@ namespace Atlas {
 
 		void draw_indexed(size_t size);
 		void draw_instanced(uint32_t count, uint32_t first = 0);
+		void flush();
 
 		void init();
 		void resize_viewport(uint32_t width, uint32_t height);

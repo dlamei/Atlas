@@ -483,6 +483,7 @@ namespace Atlas {
 		struct BoundTextureInfo {
 			Texture2D texture;
 			TextureUsageBits usages;
+			int bindingPoint;
 		};
 
 		Ref<gl_utils::GLShader> m_Shader;
