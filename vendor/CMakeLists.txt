@@ -44,4 +44,10 @@ target_include_directories( imgui
 	PUBLIC imgui/backends
 	)
 
+
+# --- optick ---
+
 target_link_libraries(imgui PUBLIC glfw)
+
+add_subdirectory(optick)
+include_directories(optick/include)

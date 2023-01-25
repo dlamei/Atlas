@@ -71,6 +71,7 @@ namespace Atlas {
 
 	void Application::update()
 	{
+		ATL_EVENT();
 		Render::frame_start();
 		m_ImGuiLayer->begin();
 
@@ -81,8 +82,12 @@ namespace Atlas {
 		for (Event e : m_QueuedEvents) on_event(e);
 		m_QueuedEvents.clear();
 
-		for (auto &layer : m_LayerStack) layer->on_imgui();
-		for (auto &layer : m_LayerStack) layer->on_update(timestep);
+		for (auto &layer : m_LayerStack) {
+			layer->on_imgui();
+			layer->on_update(timestep);
+		}
+		//for (auto &layer : m_LayerStack) layer->on_imgui();
+		//for (auto &layer : m_LayerStack) layer->on_update(timestep);
 
 		render_viewport();
 		m_ImGuiLayer->end();

@@ -10,3 +10,6 @@
 [submodule "vendor/glm"]
 	path = vendor/glm
 	url = https://github.com/g-truc/glm.git
+[submodule "vendor/optick"]
+	path = vendor/optick
+	url = https://github.com/Kingalidj/optick.git

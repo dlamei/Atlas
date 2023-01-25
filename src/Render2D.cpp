@@ -256,6 +256,7 @@ namespace Atlas::Render2D {
 	}
 
 	void flush() {
+		ATL_EVENT();
 		s_RenderData.stats.drawCalls++;
 		s_RenderData.vertexBuffer.set_data(s_RenderData.vertices.data(), s_RenderData.vertexCount * sizeof(Vertex));
 		s_RenderData.indexBuffer.set_data(s_RenderData.indices.data(), s_RenderData.indexCount * sizeof(uint32_t));

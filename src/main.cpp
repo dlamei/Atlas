@@ -36,6 +36,7 @@ class Sandbox : public Atlas::Layer {
 
 	void on_update(Atlas::Timestep ts) override {
 		using namespace Atlas;
+		ATL_EVENT("layer update");
 
 		controller.on_update(ts);
 
@@ -49,9 +50,12 @@ class Sandbox : public Atlas::Layer {
 
 		Render::begin(Application::get_viewport_color());
 
-		for (int i = 0; i < size; i++) {
-			for (int j = 0; j < size; j++) {
-				Render2D::rect({ i, j }, { 1, 1 }, compOut);
+		{
+			ATL_EVENT("draw triangles");
+			for (int i = 0; i < size; i++) {
+				for (int j = 0; j < size; j++) {
+					Render2D::rect({ i, j }, { 1, 1 }, compOut);
+				}
 			}
 		}
 
@@ -85,7 +89,6 @@ class Sandbox : public Atlas::Layer {
 		if (ImGui::Button("Reload texture")) {
 			compOut = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
 			computeShader.bind("imgOutput", compOut, TextureUsage::READ | TextureUsage::WRITE);
-			Render::flush();
 		}
 
 		ImGui::SliderFloat("size", &blurSize, 0, 10);

@@ -241,6 +241,7 @@ namespace Atlas {
 	{
 		CORE_ASSERT(m_Texture, "Texture2D::set_data: texture was not initialized!");
 		CORE_ASSERT(width() * height() == size, "Texture2D::set_data: size == width * height");
+		ATL_EVENT();
 		m_Texture->set_data(data, color_format_to_int_gl_enum(m_Format));
 	}
 
@@ -497,6 +498,7 @@ namespace Atlas {
 	void Buffer::set_data(void *data, size_t size) {
 		CORE_ASSERT(m_Buffer, "Buffer::bind: buffer was not initialized!");
 		CORE_ASSERT(size <= m_Buffer->size(), "Buffer::set_data: size has to be smaller or equal then {}. it is {}", m_Buffer->size(), size);
+		ATL_EVENT();
 		m_Buffer->set_data(data, size);
 	}
 
@@ -610,6 +612,7 @@ namespace Atlas {
 
 	void Shader::dispatch(const Shader &shader, uint32_t nGroupsX, uint32_t nGroupsY, uint32_t nGroupsZ)
 	{
+		ATL_EVENT();
 		Shader::bind(shader);
 		glDispatchCompute(nGroupsX, nGroupsY, nGroupsZ);
 	}

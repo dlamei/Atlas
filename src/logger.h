@@ -3,7 +3,11 @@
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/spdlog.h>
 
-#include <sstream>
+#define ATL_PROFILE
+
+#ifdef ATL_PROFILE 
+#include <optick.h>
+#endif
 
 class Logger {
 
@@ -57,9 +61,7 @@ private:
 #define ASSERT(x, ...)
 #endif
 
-//#define PROFILE
-
-#ifdef PROFILE
+#ifdef ATL_PROFILE
 #define ATL_EVENT(...) OPTICK_EVENT(__VA_ARGS__)
 #define ATL_FRAME(...) OPTICK_FRAME(__VA_ARGS__)
 #else

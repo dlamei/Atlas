@@ -139,6 +139,7 @@ namespace Atlas {
 
 		void draw_indexed(size_t size)
 		{
+			ATL_EVENT();
 			auto &indexBuffer = get_bound_index_buffer();
 			if (!indexBuffer.is_init()) {
 				CORE_WARN("Render::draw_indexed: no index buffer was bound");

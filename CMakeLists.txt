@@ -66,6 +66,7 @@ target_link_libraries(${PROJECT_NAME}
 	imgui
 	glm
 	stb
+	OptickCore
 	)
 
 if (WIN32)
