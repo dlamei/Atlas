@@ -13,6 +13,7 @@ class Sandbox : public Atlas::Layer {
 	Atlas::OrthographicCameraController controller;
 	Atlas::Shader computeShader;
 	Atlas::Texture2D compOut;
+	float blurSize = 10;
 
 	void on_attach() override {
 		using namespace Atlas;
@@ -21,10 +22,13 @@ class Sandbox : public Atlas::Layer {
 		//texture = Atlas::Texture2D::load("assets/images/uv_checker.png", Atlas::TextureFilter::NEAREST).value();
 
 		computeShader = Shader::load_comp("assets/shaders/tex.comp");
-		compOut = Texture2D::rgba(1024, 1024);
+
+		//compOut = Texture2D::rgba(1024, 1024, TextureFilter::NEAREST);
+		compOut = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
 
 		computeShader.bind("imgOutput", compOut, TextureUsage::READ | TextureUsage::WRITE);
 		computeShader.set("width", (float)compOut.width());
+		computeShader.set("size", blurSize);
 	}
 
 	void on_detach() override {
@@ -56,6 +60,7 @@ class Sandbox : public Atlas::Layer {
 		Render2D::RenderStats stats = Render2D::get_stats();
 		ImGui::Begin("RenderStats");
 		ImGui::Text("draw calls: %d", stats.drawCalls);
+		ImGui::Text("tris drawn: %d", stats.triangleCount);
 		ImGui::End();
 
 		Render::end();
@@ -63,17 +68,29 @@ class Sandbox : public Atlas::Layer {
 	}
 
 	void on_imgui() override {
+		using namespace Atlas;
+
 		ImGui::Begin("output");
 		ImGui::Image(compOut, { 255, 255 });
 		ImGui::End();
 
 		ImGui::Begin("Settings");
 		int tempSize = size;
-		ImGui::DragInt("size", &tempSize, .1f, 1, 200);
+		ImGui::DragInt("quad count", &tempSize, .1f, 1, 1000);
 		if (tempSize != size) {
 			size = tempSize;
 			controller.set_camera(0, (float)size, 0, (float)size);
 		}
+
+		if (ImGui::Button("Reload texture")) {
+			compOut = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
+			computeShader.bind("imgOutput", compOut, TextureUsage::READ | TextureUsage::WRITE);
+			Render::flush();
+		}
+
+		ImGui::SliderFloat("size", &blurSize, 0, 10);
+		computeShader.set("size", blurSize);
+
 		ImGui::End();
 	}
 

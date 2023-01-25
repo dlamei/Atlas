@@ -19,7 +19,6 @@ namespace gl_utils {
 		GLenum type;
 		int location;
 		int size;
-		int value;
 	};
 
 	struct GLUniformBlockInfo {
@@ -128,6 +127,8 @@ namespace gl_utils {
 		void set_int3(const char *name, const glm::ivec3 &value);
 		void set_int4(const char *name, const glm::ivec4 &value);
 		void set_int_vec(const char *name, int32_t *data, size_t count);
+
+		int32_t get_int(const char *name);
 
 		void set_uint(const char *name, uint32_t value);
 		void set_uint2(const char *name, const glm::uvec2 &value);

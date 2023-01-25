@@ -1,18 +1,61 @@
 #version 430 core
+#extension GL_ARB_shading_language_include : require
+// A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
+uint hash( uint x ) {
+    x += ( x << 10u );
+    x ^= ( x >>  6u );
+    x += ( x <<  3u );
+    x ^= ( x >> 11u );
+    x += ( x << 15u );
+    return x;
+}
+
+// Compound versions of the hashing algorithm I whipped together.
+uint hash( uvec2 v ) { return hash( v.x ^ hash(v.y)                         ); }
+uint hash( uvec3 v ) { return hash( v.x ^ hash(v.y) ^ hash(v.z)             ); }
+uint hash( uvec4 v ) { return hash( v.x ^ hash(v.y) ^ hash(v.z) ^ hash(v.w) ); }
+
+// Construct a float with half-open range [0:1] using low 23 bits.
+// All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
+float floatConstruct( uint m ) {
+    const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
+    const uint ieeeOne      = 0x3F800000u; // 1.0 in IEEE binary32
+
+    m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
+    m |= ieeeOne;                          // Add fractional part to 1.0
+
+    float  f = uintBitsToFloat( m );       // Range [1:2]
+    return f - 1.0;                        // Range [0:1]
+}
+
+// Pseudo-random value in half-open range [0:1].
+float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
+float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
+float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
+float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
+
 layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
-layout(rgba8, binding = 3) uniform image2D imgOutput;
+layout(rgba8) uniform image2D imgOutput;
 
 uniform float width;
+uniform float height;
 uniform float time; 
+uniform float size;
 
 void main() {
-    vec4 value = vec4(0.0, 0.0, 0.0, 1.0);
     ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
-    
-    float speed = 1000;
 
-    value.r = mod(float(texelCoord.x) + time * speed, width) / (gl_NumWorkGroups.x * gl_WorkGroupSize.x);
-    value.g = mod(float(texelCoord.y) + time * speed, width)/(gl_NumWorkGroups.y * gl_WorkGroupSize.y);
+		float offsetSize = size;
+		float offsetX = random((texelCoord.x ^ texelCoord.y) + time) * offsetSize - offsetSize / 2;
+		float offsetY = random(offsetX) * offsetSize - offsetSize / 2;
+
+		ivec2 pixelOffset = texelCoord;
+		pixelOffset.x += int(ceil(offsetX));
+		pixelOffset.y += int(ceil(offsetY));
+		pixelOffset.x = int(mod(pixelOffset.x, width));
+		pixelOffset.y = int(mod(pixelOffset.y, width));
+
+		vec4 value = imageLoad(imgOutput, pixelOffset);
     imageStore(imgOutput, texelCoord, value);
 }

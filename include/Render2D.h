@@ -9,7 +9,7 @@ namespace Atlas::Render2D {
 
 	struct RenderStats {
 		uint32_t drawCalls = 0;
-		uint32_t trisDrawn = 0;
+		uint32_t triangleCount = 0;
 	};
 
 	struct Vertex {

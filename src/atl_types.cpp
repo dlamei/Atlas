@@ -206,7 +206,7 @@ namespace Atlas {
 		if (usage == TextureUsage::SAMPLER) {
 
 			auto it = s_GlobalBindingContext.textures.find(indx);
-			if (it != s_GlobalBindingContext.textures.end()) return;
+			if (it != s_GlobalBindingContext.textures.end() && it->second == texture) return;
 			s_GlobalBindingContext.textures.insert_or_assign(indx, texture);
 
 			glActiveTexture(GL_TEXTURE0 + indx);
@@ -692,7 +692,7 @@ namespace Atlas {
 		BoundTextureInfo info{};
 		info.texture = texture;
 		info.usages = usages;
-		info.bindingPoint = m_Shader->get_uniform_info(name)->value;
+		info.bindingPoint = m_Shader->get_int(name.c_str());
 		m_Textures.insert_or_assign(name, info);
 	}
 

@@ -169,14 +169,10 @@ namespace gl_utils {
 				location = glGetUniformLocation(program, name.c_str());
 				if (location == -1) continue;
 
-				int params = 0;
-				glGetUniformiv(program, location, &params);
-
 				GLUniformInfo info{};
 				info.location = location;
 				info.type = type;
 				info.size;
-				info.value = params;
 
 				data->uniforms.insert({ name, info });
 			}
@@ -434,6 +430,14 @@ namespace gl_utils {
 	{
 		int location = get_uniform_location(name);
 		glProgramUniform1iv(m_ID, location, (int)count, data);
+	}
+
+	int32_t GLShader::get_int(const char *name)
+	{
+		int32_t params = 0;
+		int location = get_uniform_location(name);
+		glGetUniformiv(m_ID, location, &params);
+		return params;
 	}
 
 	void GLShader::set_uint(const char *name, uint32_t value)

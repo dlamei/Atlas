@@ -14,8 +14,8 @@ namespace Atlas::Render2D {
 	};
 
 	struct RenderData {
-		static const uint32_t MAX_VERTICES = 4 * 1000;
-		static const uint32_t MAX_INDICES = 6 * 1000;
+		static const uint32_t MAX_VERTICES = 4 * 5000;
+		static const uint32_t MAX_INDICES = 6 * 5000;
 		static const uint32_t MAX_TEXTURE_SLOTS = 32;
 
 		bool init{ false };
@@ -141,7 +141,7 @@ namespace Atlas::Render2D {
 
 		s_RenderData.vertexCount += vertexCount;
 		s_RenderData.indexCount += indexCount;
-		s_RenderData.stats.trisDrawn += 2;
+		s_RenderData.stats.triangleCount += 2;
 	}
 
 	void tri_impl(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3, Color color) {
@@ -173,7 +173,7 @@ namespace Atlas::Render2D {
 
 		s_RenderData.vertexCount += vertexCount;
 		s_RenderData.indexCount += indexCount;
-		s_RenderData.stats.trisDrawn++;
+		s_RenderData.stats.triangleCount++;
 	}
 
 	void rect(const glm::vec2 &pos, const glm::vec2 &size, const Texture2D &texture)
