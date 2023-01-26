@@ -37,7 +37,6 @@ namespace Atlas::Random {
 	{
 		return s_RealDistribution(s_RandomEngine);
 	}
-
 }
 
 namespace Atlas {

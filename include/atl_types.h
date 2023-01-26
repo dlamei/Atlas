@@ -51,44 +51,49 @@ namespace Atlas {
 		int64_t uniform_integer();
 		double uniform_real();
 
-		template<typename T>
-		typename std::enable_if_t<!is_randomizable_v<T>, void> get() {
+		template<typename T, std::enable_if_t<!is_randomizable_v<T>>...>
+		void get() {
 			CORE_ASSERT(false, "Random::get is not defined for type: {}", typeid(T).name())
 		}
 
-		template<typename T>
-		typename std::enable_if_t<!is_randomizable_v<T>, void> get(T min, T max) {
+		template<typename T, std::enable_if_t<!is_randomizable_v<T>>...>
+		void get(T min, T max) {
 			CORE_ASSERT(false, "Random::get(min, max) is not defined for type: {}", typeid(T).name())
 		}
 
-		template<typename T>
-		typename std::enable_if_t<std::is_integral_v<T>, T> get() {
+		//template<typename T>
+		//typename std::enable_if_t<std::is_integral_v<T>, T> get() {
+		//	return (T)uniform_integer();
+		//}
+
+		template<typename T, std::enable_if_t<std::is_integral_v<T>>...>
+		T get() {
 			return (T)uniform_integer();
 		}
 
-		template<typename T>
-		typename std::enable_if_t<std::is_floating_point_v<T>, T> get() {
+		template<typename T, std::enable_if_t<std::is_floating_point_v<T>>...>
+		T get() {
 			return (T)uniform_real();
 		}
 
-		template<typename T>
-		typename std::enable_if_t<std::is_integral_v<T>, T> get(T min, T max) {
+		template<typename T, std::enable_if_t<std::is_integral_v<T>>...>
+		T get(T min, T max) {
 			T range = max - min + 1;
 			return min + (get<T>() % range + range) % range;
 		}
 
-		template<typename T>
-		typename std::enable_if_t<std::is_floating_point_v<T>, T> get(T min, T max) {
+		template<typename T, std::enable_if_t<std::is_floating_point_v<T>>...>
+		T get(T min, T max) {
 			return get<T>() * (max - min) + min;
 		}
 
-		template<typename T>
-		typename std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, T> get(T max) {
+		template<typename T, std::enable_if_t<std::is_floating_point_v<T> || std::is_integral_v<T>>...>
+		T get(T max) {
 			return get<T>(0, max);
 		}
 
-		template<typename T>
-		typename std::enable_if_t<glm::type<T>::is_vec, T> get() {
+		template<typename T, std::enable_if_t<glm::type<T>::is_vec>...>
+		T get() {
 			T value{};
 			const constexpr glm::length_t length = glm::type<T>::components;
 			for (glm::length_t i = 0; i < length; i++) {
@@ -97,8 +102,8 @@ namespace Atlas {
 			return value;
 		}
 
-		template<typename T>
-		typename std::enable_if_t<glm::type<T>::is_vec, T> get(typename T::value_type min, typename T::value_type max) {
+		template<typename T, std::enable_if_t<glm::type<T>::is_vec>...>
+		T get(typename T::value_type min, typename T::value_type max) {
 			T value{};
 			const constexpr glm::length_t length = glm::type<T>::components;
 			for (glm::length_t i = 0; i < length; i++) {
