@@ -120,6 +120,7 @@ namespace Atlas {
 		//static void bind_image(const Texture2D &texture, uint32_t unit);
 
 		void set_data(const Color *data, size_t size) const;
+		void fill(const Color fillColor) const;
 
 		uint32_t width() const;
 		uint32_t height() const;

@@ -36,10 +36,24 @@ namespace Atlas {
 		virtual void on_event(Event &event) {}
 	};
 
+	struct ApplicationCreateInfo {
+		std::string title;
+		uint32_t width;
+		uint32_t height;
+	};
+
 	class Application {
 	public:
 
-		Application();
+		static Application default() {
+			ApplicationCreateInfo info{};
+			info.width = 1600;
+			info.height = 900;
+			info.title = "Atlas Engine";
+			return Application(info);
+		}
+
+		Application(const ApplicationCreateInfo &info);
 		~Application();
 
 		void run();
@@ -57,7 +71,7 @@ namespace Atlas {
 		static bool is_viewport_hovered();
 		static float get_time();
 		static Texture2D &get_viewport_color();
-		static Texture2D &get_viewport_depth();
+		//static Texture2D &get_viewport_depth();
 
 		void push_layer(Ref<Layer> layer);
 
@@ -84,7 +98,7 @@ namespace Atlas {
 		std::vector<Event> m_QueuedEvents;
 
 		Texture2D m_ColorBuffer;
-		Texture2D m_DepthBuffer;
+		//Texture2D m_DepthBuffer;
 
 		glm::vec2 m_ViewportSize;
 		bool m_ViewportFocus;

@@ -2,7 +2,11 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include <stb_image.h>
+
 #include "application.h"
+
+#include <iomanip>
 
 namespace Atlas {
 
@@ -17,11 +21,16 @@ namespace Atlas {
 	Window::Window(const WindowCreateInfo &info)
 		: m_Title(info.title), m_Width(info.width), m_Height(info.height),
 		m_EventCallBackFn(info.eventCallback) {
-		init();
+		init(info);
 	}
 
 	inline const EventCallbackFn &Window::get_event_callback() const {
 		return m_EventCallBackFn;
+	}
+
+	void Window::set_vsync(bool enable)
+	{
+		glfwSwapInterval(enable);
 	}
 
 	bool Window::is_key_pressed(KeyCode key) {
@@ -39,13 +48,7 @@ namespace Atlas {
 		return !(m_Width && m_Height);
 	}
 
-	//std::pair<float, float> Window::get_mouse_pos() {
-	//	double mouseX, mouseY;
-	//	glfwGetCursorPos(m_Window, &mouseX, &mouseY);
-	//	return { (float)mouseX, (float)mouseY };
-	//}
-
-	void Window::init() {
+	void Window::init(const WindowCreateInfo &info) {
 
 		CORE_TRACE("Creating window {0} ({1}, {2})", m_Title, m_Width, m_Height);
 
@@ -71,6 +74,16 @@ namespace Atlas {
 		glfwMakeContextCurrent(m_Window);
 		gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 		glfwSwapInterval(1);
+
+		if (info.icon.has_value())
+		{
+			double logoSize = (double)info.icon.value().size();
+			GLFWimage images{};
+			images.width = (int)sqrt(logoSize);
+			images.height = images.width;
+			images.pixels = (uint8_t *)info.icon.value().data();
+			glfwSetWindowIcon(m_Window, 1, &images);
+		}
 
 		{
 			int w, h;

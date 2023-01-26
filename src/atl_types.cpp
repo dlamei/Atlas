@@ -245,6 +245,12 @@ namespace Atlas {
 		m_Texture->set_data(data, color_format_to_int_gl_enum(m_Format));
 	}
 
+	void Texture2D::fill(const Color fillColor) const
+	{
+		const std::vector<Color> colors(width() * height(), fillColor);
+		set_data(colors.data(), width() * height());
+	}
+
 	//void Texture2D::bind(uint32_t indx) const
 	//{
 	//	m_Texture->bind(indx);

@@ -43,6 +43,7 @@ set(INCLUDE_FILES
 
 set(EMBEDED
 	embed/font.embed
+	embed/logo.embed
 )
 
 include_directories(include)

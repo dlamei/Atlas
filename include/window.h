@@ -12,8 +12,8 @@ namespace Atlas {
 	struct WindowCreateInfo {
 		std::string title{ "Atlas" };
 		uint32_t width{ 0 }, height{ 0 };
-
 		EventCallbackFn eventCallback = default_event_callback_fn;
+		std::optional<std::vector<uint32_t>> icon{};
 	};
 
 	class Window {
@@ -39,12 +39,14 @@ namespace Atlas {
 		void set_event_callback(const EventCallbackFn &callback);
 		const EventCallbackFn &get_event_callback() const;
 
+		void set_vsync(bool enable);
+
 		std::pair<float, float> get_mouse_pos() const;
 		std::pair<float, float> get_window_pos() const;
 		inline GLFWwindow *get_native_window() const { return m_Window; }
 
 	private:
-		void init();
+		void init(const WindowCreateInfo &info);
 
 		GLFWwindow *m_Window;
 

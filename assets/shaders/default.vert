@@ -15,7 +15,7 @@ struct Camera {
 	mat4 viewProj;
 };
 
-layout (std140, binding = 3) uniform CameraBuffer {
+layout (std140, binding = 0) uniform CameraBuffer {
 	Camera cam;
 };
 

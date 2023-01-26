@@ -1,0 +1,43 @@
+#version 450 core
+
+layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+layout(rgba8, binding = 0) uniform image2D inputBoard;
+layout(rgba8, binding = 1) uniform image2D outputBoard;
+
+ivec2 texSize;
+
+int make_black_white(vec3 color) {
+	float greyscale = (color.r + color.g + color.b) / 3;
+	return int(round(greyscale));
+}
+
+ivec2 get_neighbor(ivec2 uv, ivec2 off) {
+	uv += off;
+	uv.x = int(mod(uv.x, texSize.x));
+	uv.y = int(mod(uv.y, texSize.y));
+	return uv;
+}
+
+void main() {
+		texSize = imageSize(inputBoard);
+    ivec2 uv = ivec2(gl_GlobalInvocationID.xy);
+
+		int sum = 0;
+		for (int i = -1; i <= 1; i++) {
+			for (int j = -1; j <= 1; j++) {
+				if (i == 0 && j == 0) continue;
+				ivec2 n = get_neighbor(uv, ivec2(i, j));
+				sum += make_black_white(imageLoad(inputBoard, n).xyz);
+			}
+		}
+
+		int value = make_black_white(imageLoad(inputBoard, uv).xyz);
+		if (value == 1) {
+			if (sum < 2 || sum > 3) value = 0;
+		} else {
+			if (sum == 3) value = 1;
+		}
+
+		imageStore(outputBoard, uv, vec4(vec3(value), 1));
+}

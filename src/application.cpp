@@ -11,6 +11,10 @@
 
 #include "Render2D.h"
 
+static const std::vector<uint32_t> s_Logo = {
+#include "logo.embed"
+};
+
 struct Vertex {
 	glm::vec3 pos;
 	glm::vec2 uv;
@@ -20,15 +24,20 @@ namespace Atlas {
 
 	Application *Application::s_Instance = nullptr;
 
-	Application::Application()
+	Application::Application(const ApplicationCreateInfo &info)
 	{
 		CORE_ASSERT(!s_Instance, "Application already created!");
 		s_Instance = this;
 
-		m_ViewportSize = { 1600, 900 };
+		m_ViewportSize = { info.width, info.height };
 
-		WindowCreateInfo info = { "Atlas Engine", 1600, 900 };
-		m_Window = make_scope<Window>(info);
+		WindowCreateInfo winInfo;
+		winInfo.title = info.title;
+		winInfo.width = info.width;
+		winInfo.height = info.height;
+		winInfo.icon = s_Logo;
+
+		m_Window = make_scope<Window>(winInfo);
 		m_Window->set_event_callback(BIND_EVENT_FN(Application::on_event));
 
 		Render::init();
@@ -37,9 +46,7 @@ namespace Atlas {
 		push_layer(m_ImGuiLayer);
 
 		m_ColorBuffer = Texture2D::rgba((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-		m_DepthBuffer = Texture2D::depth((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-
-		//m_RenderThread = std::thread(Application::update_frame);
+		//m_DepthBuffer = Texture2D::depth((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 	}
 
 	Application::~Application()
@@ -198,10 +205,10 @@ namespace Atlas {
 		return get_instance()->m_ColorBuffer;
 	}
 
-	Texture2D &Application::get_viewport_depth()
-	{
-		return get_instance()->m_DepthBuffer;
-	}
+	//Texture2D &Application::get_viewport_depth()
+	//{
+	//	return get_instance()->m_DepthBuffer;
+	//}
 
 	void Application::push_layer(Ref<Layer> layer)
 	{
@@ -252,7 +259,7 @@ namespace Atlas {
 		if (e.width == 0 || e.height == 0) return false;
 
 		m_ColorBuffer = Texture2D::rgba(e.width, e.height, TextureFilter::NEAREST);
-		m_DepthBuffer = Texture2D::depth(e.width, e.height, TextureFilter::NEAREST);
+		//m_DepthBuffer = Texture2D::depth(e.width, e.height, TextureFilter::NEAREST);
 
 		return false;
 	}
