@@ -3,6 +3,7 @@
 #include "imgui.h"
 
 #include <glm/glm.hpp>
+#include <glm/gtx/type_trait.hpp>
 
 namespace gl_utils {
 	class GLTexture2D;
@@ -35,6 +36,77 @@ namespace ImGui {
 }
 
 namespace Atlas {
+
+	namespace Random {
+		void init();
+
+		template<typename T>
+		struct is_randomizable {
+			static constexpr bool value = std::is_integral_v<T> || std::is_floating_point_v<T> || glm::type<T>::is_vec;
+		};
+
+		template<typename T>
+		const constexpr bool is_randomizable_v = is_randomizable<T>::value;
+
+		int64_t uniform_integer();
+		double uniform_real();
+
+		template<typename T>
+		typename std::enable_if_t<!is_randomizable_v<T>, void> get() {
+			CORE_ASSERT(false, "Random::get is not defined for type: {}", typeid(T).name())
+		}
+
+		template<typename T>
+		typename std::enable_if_t<!is_randomizable_v<T>, void> get(T min, T max) {
+			CORE_ASSERT(false, "Random::get(min, max) is not defined for type: {}", typeid(T).name())
+		}
+
+		template<typename T>
+		typename std::enable_if_t<std::is_integral_v<T>, T> get() {
+			return (T)uniform_integer();
+		}
+
+		template<typename T>
+		typename std::enable_if_t<std::is_floating_point_v<T>, T> get() {
+			return (T)uniform_real();
+		}
+
+		template<typename T>
+		typename std::enable_if_t<std::is_integral_v<T>, T> get(T min, T max) {
+			T range = max - min + 1;
+			return min + (get<T>() % range + range) % range;
+		}
+
+		template<typename T>
+		typename std::enable_if_t<std::is_floating_point_v<T>, T> get(T min, T max) {
+			return get<T>() * (max - min) + min;
+		}
+
+		template<typename T>
+		typename std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, T> get(T max) {
+			return get<T>(0, max);
+		}
+
+		template<typename T>
+		typename std::enable_if_t<glm::type<T>::is_vec, T> get() {
+			T value{};
+			const constexpr glm::length_t length = glm::type<T>::components;
+			for (glm::length_t i = 0; i < length; i++) {
+				value[i] = get<T::value_type>();
+			}
+			return value;
+		}
+
+		template<typename T>
+		typename std::enable_if_t<glm::type<T>::is_vec, T> get(typename T::value_type min, typename T::value_type max) {
+			T value{};
+			const constexpr glm::length_t length = glm::type<T>::components;
+			for (glm::length_t i = 0; i < length; i++) {
+				value[i] = get<T::value_type>(min, max);
+			}
+			return value;
+		}
+	}
 
 	namespace Render {
 		Buffer &get_bound_index_buffer();
@@ -121,6 +193,8 @@ namespace Atlas {
 
 		void set_data(const Color *data, size_t size) const;
 		void fill(const Color fillColor) const;
+		void fill_random();
+		void fill_random_greyscale();
 
 		uint32_t width() const;
 		uint32_t height() const;

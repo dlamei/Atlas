@@ -40,6 +40,7 @@ namespace Atlas {
 		m_Window = make_scope<Window>(winInfo);
 		m_Window->set_event_callback(BIND_EVENT_FN(Application::on_event));
 
+		Random::init();
 		Render::init();
 
 		m_ImGuiLayer = make_ref<ImGuiLayer>();

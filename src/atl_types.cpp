@@ -17,7 +17,31 @@ bool ImGui::ImageButton(const Atlas::Texture2D &texture, const ImVec2 &size, con
 	return ImGui::ImageButton(reinterpret_cast<void *>(ptr), size, uv0, uv1, frame_padding, bg_col, tint_col);
 }
 
+namespace Atlas::Random {
+
+	static thread_local std::mt19937 s_RandomEngine;
+	static std::uniform_int_distribution<int64_t> s_IntDistribution;
+	static std::uniform_real_distribution<double> s_RealDistribution;
+
+	void init()
+	{
+		s_RandomEngine.seed(std::random_device()());
+	}
+
+	int64_t uniform_integer()
+	{
+		return s_IntDistribution(s_RandomEngine);
+	}
+
+	double uniform_real()
+	{
+		return s_RealDistribution(s_RandomEngine);
+	}
+
+}
+
 namespace Atlas {
+
 
 	struct BindingContext {
 		VertexLayout layout;
@@ -31,9 +55,8 @@ namespace Atlas {
 
 	static BindingContext s_GlobalBindingContext;
 
-	uint32_t to_rgb(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-		uint32_t result = (a << 24) | (b << 16) | (g << 8) | r;
-		return result;
+	inline uint32_t to_rgb(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+		return (a << 24) | (b << 16) | (g << 8) | r;
 	}
 
 	Color::Color()
@@ -249,6 +272,38 @@ namespace Atlas {
 	{
 		const std::vector<Color> colors(width() * height(), fillColor);
 		set_data(colors.data(), width() * height());
+	}
+
+	void Texture2D::fill_random()
+	{
+		const size_t size = width() * height();
+		std::vector<Color> colors(size);
+
+		//for (int i = 0; i < size; i++) {
+		//	colors[i] = Color(Random::get<uint8_t>(), Random::get<uint8_t>(), Random::get<uint8_t>());
+		//}
+
+		std::for_each(colors.begin(), colors.end(), [](Color &c) {
+			c = Color(Random::get<uint8_t>(), Random::get<uint8_t>(), Random::get<uint8_t>());
+			});
+
+		set_data(colors.data(), size);
+	}
+
+	void Texture2D::fill_random_greyscale()
+	{
+		const size_t size = width() * height();
+		std::vector<Color> colors(size);
+
+		//for (int i = 0; i < size; i++) {
+		//	colors[i] = Color(Random::get<uint8_t>());
+		//}
+
+		std::for_each(colors.begin(), colors.end(), [](Color &c) {
+			c = Color(Random::get<uint8_t>());
+			});
+
+		set_data(colors.data(), size);
 	}
 
 	//void Texture2D::bind(uint32_t indx) const

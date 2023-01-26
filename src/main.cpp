@@ -13,6 +13,8 @@ class Sandbox : public Atlas::Layer {
 	Atlas::Texture2D compIn;
 	Atlas::Texture2D compOut;
 
+	int size = 1024;
+
 	void on_attach() override {
 		using namespace Atlas;
 		Render2D::init();
@@ -21,9 +23,9 @@ class Sandbox : public Atlas::Layer {
 
 		computeShader = Shader::load_comp("assets/shaders/game_of_life.comp");
 
-		compIn = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
-		compOut = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
-
+		compIn = Texture2D::rgba(size, size, TextureFilter::NEAREST);
+		compOut = Texture2D::rgba(size, size, TextureFilter::NEAREST);
+		compIn.fill_random_greyscale();
 	}
 
 	void on_detach() override {
@@ -55,9 +57,13 @@ class Sandbox : public Atlas::Layer {
 		using namespace Atlas;
 
 		ImGui::Begin("Settings");
+
+		ImGui::InputInt("size", &size);
+
 		if (ImGui::Button("reload texture")) {
-			compIn = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
-			compOut = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
+			compIn = Texture2D::rgba(size, size, TextureFilter::NEAREST);
+			compOut = Texture2D::rgba(size, size, TextureFilter::NEAREST);
+			compIn.fill_random_greyscale();
 		}
 		ImGui::End();
 	}
