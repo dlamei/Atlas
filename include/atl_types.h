@@ -15,7 +15,7 @@ namespace gl_utils {
 }
 
 namespace Atlas {
-	class Color;
+	class RGBA;
 	class Texture2D;
 	class Framebuffer;
 	class Buffer;
@@ -51,49 +51,51 @@ namespace Atlas {
 		int64_t uniform_integer();
 		double uniform_real();
 
-		template<typename T, std::enable_if_t<!is_randomizable_v<T>>...>
-		void get() {
+		template<typename T>
+		typename std::enable_if_t<!is_randomizable_v<T>, void> get() {
 			CORE_ASSERT(false, "Random::get is not defined for type: {}", typeid(T).name())
 		}
 
-		template<typename T, std::enable_if_t<!is_randomizable_v<T>>...>
-		void get(T min, T max) {
+		template<typename T>
+		std::enable_if_t<!is_randomizable_v<T>, void>
+			get(T min, T max) {
 			CORE_ASSERT(false, "Random::get(min, max) is not defined for type: {}", typeid(T).name())
 		}
 
-		//template<typename T>
-		//typename std::enable_if_t<std::is_integral_v<T>, T> get() {
+		//this is better, but visual studio seems to have a problem with it
+		//template<typename T, std::enable_if_t<...>>
+		//get() {
 		//	return (T)uniform_integer();
 		//}
 
-		template<typename T, std::enable_if_t<std::is_integral_v<T>>...>
-		T get() {
+		template<typename T>
+		std::enable_if_t<std::is_integral_v<T>, T> get() {
 			return (T)uniform_integer();
 		}
 
-		template<typename T, std::enable_if_t<std::is_floating_point_v<T>>...>
-		T get() {
+		template<typename T>
+		std::enable_if_t<std::is_floating_point_v<T>, T> get() {
 			return (T)uniform_real();
 		}
 
-		template<typename T, std::enable_if_t<std::is_integral_v<T>>...>
-		T get(T min, T max) {
+		template<typename T>
+		std::enable_if_t<std::is_integral_v<T>, T> get(T min, T max) {
 			T range = max - min + 1;
 			return min + (get<T>() % range + range) % range;
 		}
 
-		template<typename T, std::enable_if_t<std::is_floating_point_v<T>>...>
-		T get(T min, T max) {
+		template<typename T>
+		std::enable_if_t<std::is_floating_point_v<T>, T> get(T min, T max) {
 			return get<T>() * (max - min) + min;
 		}
 
-		template<typename T, std::enable_if_t<std::is_floating_point_v<T> || std::is_integral_v<T>>...>
-		T get(T max) {
+		template<typename T>
+		std::enable_if_t<std::is_floating_point_v<T> || std::is_integral_v<T>, T> get(T max) {
 			return get<T>(0, max);
 		}
 
-		template<typename T, std::enable_if_t<glm::type<T>::is_vec>...>
-		T get() {
+		template<typename T>
+		std::enable_if_t<glm::type<T>::is_vec, T> get() {
 			T value{};
 			const constexpr glm::length_t length = glm::type<T>::components;
 			for (glm::length_t i = 0; i < length; i++) {
@@ -102,8 +104,8 @@ namespace Atlas {
 			return value;
 		}
 
-		template<typename T, std::enable_if_t<glm::type<T>::is_vec>...>
-		T get(typename T::value_type min, typename T::value_type max) {
+		template<typename T>
+		std::enable_if_t<glm::type<T>::is_vec, T> get(typename T::value_type min, typename T::value_type max) {
 			T value{};
 			const constexpr glm::length_t length = glm::type<T>::components;
 			for (glm::length_t i = 0; i < length; i++) {
@@ -118,15 +120,15 @@ namespace Atlas {
 		Buffer &get_bound_vertex_buffer(uint32_t index = 0);
 	}
 
-	class Color {
+	class RGBA {
 	public:
-		Color();
-		Color(uint8_t value);
-		Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
-		Color(uint8_t r, uint8_t g, uint8_t b);
+		RGBA();
+		RGBA(uint8_t value);
+		RGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+		RGBA(uint8_t r, uint8_t g, uint8_t b);
 
-		static Color from_norm(glm::vec3 val);
-		static Color from_norm(glm::vec4 val);
+		static RGBA from_norm(glm::vec3 val);
+		static RGBA from_norm(glm::vec4 val);
 
 		inline uint8_t red() const;
 		inline uint8_t green() const;
@@ -141,15 +143,15 @@ namespace Atlas {
 		uint32_t m_Data;
 	};
 
-	inline bool operator==(const Color &c1, const Color &c2) {
+	inline bool operator==(const RGBA &c1, const RGBA &c2) {
 		return (uint32_t)c1 == (uint32_t)c2;
 	}
 
-	inline bool operator!=(const Color &c1, const Color &c2) {
+	inline bool operator!=(const RGBA &c1, const RGBA &c2) {
 		return (uint32_t)c1 != (uint32_t)c2;
 	}
 
-	std::ostream &operator<<(std::ostream &os, const Color &c);
+	std::ostream &operator<<(std::ostream &os, const RGBA &c);
 
 	enum class ColorFormat : uint32_t {
 		R8G8B8A8,
@@ -196,8 +198,8 @@ namespace Atlas {
 		static void unbind(uint32_t index);
 		//static void bind_image(const Texture2D &texture, uint32_t unit);
 
-		void set_data(const Color *data, size_t size) const;
-		void fill(const Color fillColor) const;
+		void set_data(const RGBA *data, size_t size) const;
+		void fill(const RGBA fillColor) const;
 		void fill_random();
 		void fill_random_greyscale();
 

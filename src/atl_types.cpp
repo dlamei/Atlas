@@ -54,57 +54,57 @@ namespace Atlas {
 
 	static BindingContext s_GlobalBindingContext;
 
-	inline uint32_t to_rgb(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+	inline uint32_t to_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 		return (a << 24) | (b << 16) | (g << 8) | r;
 	}
 
-	Color::Color()
-		: m_Data(to_rgb(255, 255, 255, 255)) {};
-	Color::Color(uint8_t value)
-		: m_Data(to_rgb(value, value, value, 255)) {};
-	Color::Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
-		: m_Data(to_rgb(r, g, b, a)) {};
-	Color::Color(uint8_t r, uint8_t g, uint8_t b)
-		: m_Data(to_rgb(r, g, b, 255)) {}
+	RGBA::RGBA()
+		: m_Data(to_rgba(255, 255, 255, 255)) {};
+	RGBA::RGBA(uint8_t value)
+		: m_Data(to_rgba(value, value, value, 255)) {};
+	RGBA::RGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+		: m_Data(to_rgba(r, g, b, a)) {};
+	RGBA::RGBA(uint8_t r, uint8_t g, uint8_t b)
+		: m_Data(to_rgba(r, g, b, 255)) {}
 
-	Color Color::from_norm(glm::vec3 val)
+	RGBA RGBA::from_norm(glm::vec3 val)
 	{
 		uint8_t r = static_cast<uint8_t>(val.r * 255);
 		uint8_t g = static_cast<uint8_t>(val.g * 255);
 		uint8_t b = static_cast<uint8_t>(val.b * 255);
-		return Color(r, g, b);
+		return RGBA(r, g, b);
 	}
 
-	Color Color::from_norm(glm::vec4 val)
+	RGBA RGBA::from_norm(glm::vec4 val)
 	{
 		uint8_t r = static_cast<uint8_t>(val.r * 255);
 		uint8_t g = static_cast<uint8_t>(val.g * 255);
 		uint8_t b = static_cast<uint8_t>(val.b * 255);
 		uint8_t a = static_cast<uint8_t>(val.a * 255);
-		return Color(r, g, b, a);
+		return RGBA(r, g, b, a);
 	}
 
-	inline uint8_t Color::red() const
+	inline uint8_t RGBA::red() const
 	{
 		return m_Data & 0xff;
 	}
 
-	inline uint8_t Color::green() const
+	inline uint8_t RGBA::green() const
 	{
 		return m_Data >> 8 & 0xff;
 	}
 
-	inline uint8_t Color::blue() const
+	inline uint8_t RGBA::blue() const
 	{
 		return m_Data >> 16 & 0xff;
 	}
 
-	inline uint8_t Color::alpha() const
+	inline uint8_t RGBA::alpha() const
 	{
 		return m_Data >> 24 & 0xff;
 	}
 
-	glm::vec4 Color::normalized()
+	glm::vec4 RGBA::normalized()
 	{
 		float r = red() / 255.f;
 		float g = green() / 255.f;
@@ -114,17 +114,24 @@ namespace Atlas {
 		return { r, g, b, a };
 	}
 
-	Color::operator uint32_t() const
+	RGBA::operator uint32_t() const
 	{
 		return m_Data;
 	}
 
-	std::ostream &operator<<(std::ostream &os, const Color &c) {
+	std::ostream &operator<<(std::ostream &os, const RGBA &c) {
 		os << "{ r: " << (uint32_t)c.red() << ", g: " << (uint32_t)c.green() << ", b: "
 			<< (uint32_t)c.blue() << ", a: " << (uint32_t)c.alpha() << " }";
 		return os;
 	}
 
+	RGB::RGB()
+	{
+	}
+
+	RGB::RGB(uint8_t value)
+	{
+	}
 
 	Texture2D::Texture2D(const Texture2DCreateInfo &info)
 		: m_Format(info.format)
@@ -214,7 +221,7 @@ namespace Atlas {
 		}
 
 		Texture2D tex = Texture2D(info);
-		tex.set_data((Color *)data, (size_t)width * height);
+		tex.set_data((RGBA *)data, (size_t)width * height);
 
 		stbi_image_free(data);
 
@@ -259,7 +266,7 @@ namespace Atlas {
 	//	glBindImageTexture(unit, texture.m_Texture->id(), 0, GL_FALSE, 0, GL_READ_WRITE, color_format_to_gl_enum(texture.m_Format));
 	//}
 
-	void Texture2D::set_data(const Color *data, size_t size) const
+	void Texture2D::set_data(const RGBA *data, size_t size) const
 	{
 		CORE_ASSERT(m_Texture, "Texture2D::set_data: texture was not initialized!");
 		CORE_ASSERT(width() * height() == size, "Texture2D::set_data: size == width * height");
@@ -267,23 +274,23 @@ namespace Atlas {
 		m_Texture->set_data(data, color_format_to_int_gl_enum(m_Format));
 	}
 
-	void Texture2D::fill(const Color fillColor) const
+	void Texture2D::fill(const RGBA fillColor) const
 	{
-		const std::vector<Color> colors(width() * height(), fillColor);
+		const std::vector<RGBA> colors(width() * height(), fillColor);
 		set_data(colors.data(), width() * height());
 	}
 
 	void Texture2D::fill_random()
 	{
 		const size_t size = width() * height();
-		std::vector<Color> colors(size);
+		std::vector<RGBA> colors(size);
 
 		//for (int i = 0; i < size; i++) {
 		//	colors[i] = Color(Random::get<uint8_t>(), Random::get<uint8_t>(), Random::get<uint8_t>());
 		//}
 
-		std::for_each(colors.begin(), colors.end(), [](Color &c) {
-			c = Color(Random::get<uint8_t>(), Random::get<uint8_t>(), Random::get<uint8_t>());
+		std::for_each(colors.begin(), colors.end(), [](RGBA &c) {
+			c = RGBA(Random::get<uint8_t>(), Random::get<uint8_t>(), Random::get<uint8_t>());
 			});
 
 		set_data(colors.data(), size);
@@ -292,14 +299,14 @@ namespace Atlas {
 	void Texture2D::fill_random_greyscale()
 	{
 		const size_t size = width() * height();
-		std::vector<Color> colors(size);
+		std::vector<RGBA> colors(size);
 
 		//for (int i = 0; i < size; i++) {
 		//	colors[i] = Color(Random::get<uint8_t>());
 		//}
 
-		std::for_each(colors.begin(), colors.end(), [](Color &c) {
-			c = Color(Random::get<uint8_t>());
+		std::for_each(colors.begin(), colors.end(), [](RGBA &c) {
+			c = RGBA(Random::get<uint8_t>());
 			});
 
 		set_data(colors.data(), size);
