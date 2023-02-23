@@ -16,6 +16,7 @@ namespace gl_utils {
 
 namespace Atlas {
 	class RGBA;
+	class RGB;
 	class Texture2D;
 	class Framebuffer;
 	class Buffer;
@@ -138,6 +139,7 @@ namespace Atlas {
 		glm::vec4 normalized();
 
 		explicit operator uint32_t() const;
+		operator RGB() const;
 
 	private:
 		uint32_t m_Data;
@@ -152,6 +154,38 @@ namespace Atlas {
 	}
 
 	std::ostream &operator<<(std::ostream &os, const RGBA &c);
+
+	class RGB {
+	public:
+		RGB();
+		RGB(uint8_t value);
+		RGB(uint8_t r, uint8_t g, uint8_t b);
+
+		static RGB from_norm(glm::vec3 val);
+
+		inline uint8_t red() const { return m_Red; }
+		inline uint8_t green() const { return m_Green; }
+		inline uint8_t blue() const { return m_Blue; }
+
+		glm::vec3 normalized();
+
+		operator RGBA() const;
+
+	private:
+		uint8_t m_Blue;
+		uint8_t m_Green;
+		uint8_t m_Red;
+	};
+
+	inline bool operator==(const RGB &c1, const RGB &c2) {
+		return (RGBA)c1 == (RGBA)c2;
+	}
+
+	inline bool operator!=(const RGB &c1, const RGB &c2) {
+		return (RGBA)c1 != (RGBA)c2;
+	}
+
+	std::ostream &operator<<(std::ostream &os, const RGB &c);
 
 	enum class ColorFormat : uint32_t {
 		R8G8B8A8,
@@ -198,13 +232,16 @@ namespace Atlas {
 		static void unbind(uint32_t index);
 		//static void bind_image(const Texture2D &texture, uint32_t unit);
 
-		void set_data(const RGBA *data, size_t size) const;
-		void fill(const RGBA fillColor) const;
-		void fill_random();
-		void fill_random_greyscale();
+		void fill(const void *data, size_t size) const;
 
-		uint32_t width() const;
-		uint32_t height() const;
+		template <typename T>
+		void fill(T value) {
+			std::vector<T> data(width() * height(), value);
+			fill(data.data(), data.size() * sizeof(T));
+		}
+
+		inline uint32_t width() const;
+		inline uint32_t height() const;
 		bool has_mipmap() const;
 		inline ColorFormat format() const { return m_Format; }
 		inline bool is_init() const { return m_Texture != nullptr; }

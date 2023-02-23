@@ -251,6 +251,11 @@ namespace Atlas {
 		return false;
 	}
 
+	void Application::set_vsync(bool enable)
+	{
+		get_instance()->m_Window->set_vsync(enable);
+	}
+
 	bool Application::on_viewport_resized(ViewportResizedEvent &e)
 	{
 		m_ViewportSize = { e.width, e.height };

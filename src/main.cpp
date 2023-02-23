@@ -6,6 +6,16 @@
 #include "atl_types.h"
 #include "RenderApi.h"
 
+void fill_random(Atlas::Texture2D &tex) {
+	std::vector<Atlas::RGBA> arr(tex.width() * tex.height());
+
+	for (uint32_t i = 0; i < arr.size(); i++) {
+		arr.at(i) = Atlas::RGBA(Atlas::Random::get<uint8_t>());
+	}
+
+	tex.fill(arr.data(), arr.size() * sizeof(Atlas::RGBA));
+}
+
 class Sandbox : public Atlas::Layer {
 
 	Atlas::OrthographicCameraController controller;
@@ -23,9 +33,14 @@ class Sandbox : public Atlas::Layer {
 
 		computeShader = Shader::load_comp("assets/shaders/game_of_life.comp");
 
+		//compIn = Texture2D::rgba(size, size, TextureFilter::NEAREST);
+		//compIn.fill_random_greyscale();
+		//compIn = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
 		compIn = Texture2D::rgba(size, size, TextureFilter::NEAREST);
+		fill_random(compIn);
+
+		size = compIn.width();
 		compOut = Texture2D::rgba(size, size, TextureFilter::NEAREST);
-		compIn.fill_random_greyscale();
 	}
 
 	void on_detach() override {
@@ -61,9 +76,9 @@ class Sandbox : public Atlas::Layer {
 		ImGui::InputInt("size", &size);
 
 		if (ImGui::Button("reload texture")) {
-			compIn = Texture2D::rgba(size, size, TextureFilter::NEAREST);
-			compOut = Texture2D::rgba(size, size, TextureFilter::NEAREST);
-			compIn.fill_random_greyscale();
+			compIn = Texture2D::rgba(size, size, Atlas::TextureFilter::NEAREST);
+			fill_random(compIn);
+			//compIn = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
 		}
 		ImGui::End();
 	}

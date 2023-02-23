@@ -3,7 +3,7 @@
 #include "atl_types.h"
 #include "gl_utils.h"
 
-GLenum color_format_to_int_gl_enum(Atlas::ColorFormat format) {
+GLenum color_format_to_int_gl_enum(const Atlas::ColorFormat format) {
 	switch (format) {
 	case Atlas::ColorFormat::R8G8B8: return GL_RGB;
 	case Atlas::ColorFormat::R8G8B8A8: return GL_RGBA;
@@ -14,7 +14,7 @@ GLenum color_format_to_int_gl_enum(Atlas::ColorFormat format) {
 	return 0;
 }
 
-GLenum color_format_to_gl_enum(Atlas::ColorFormat format) {
+GLenum color_format_to_gl_enum(const Atlas::ColorFormat format) {
 	switch (format) {
 	case Atlas::ColorFormat::R8G8B8: return GL_RGB8;
 	case Atlas::ColorFormat::R8G8B8A8: return GL_RGBA8;
@@ -26,7 +26,7 @@ GLenum color_format_to_gl_enum(Atlas::ColorFormat format) {
 	return 0;
 }
 
-bool is_color_attachment(Atlas::ColorFormat format) {
+bool is_color_attachment(const Atlas::ColorFormat format) {
 	switch (format) {
 	case Atlas::ColorFormat::R8G8B8:
 	case Atlas::ColorFormat::R8G8B8A8: return true;
@@ -39,7 +39,7 @@ bool is_color_attachment(Atlas::ColorFormat format) {
 	return 0;
 }
 
-GLenum color_format_to_gl_attachment(Atlas::ColorFormat format) {
+GLenum color_format_to_gl_attachment(const Atlas::ColorFormat format) {
 	switch (format)
 	{
 	case Atlas::ColorFormat::R8G8B8A8: return GL_COLOR_ATTACHMENT0;
@@ -52,7 +52,20 @@ GLenum color_format_to_gl_attachment(Atlas::ColorFormat format) {
 	return 0;
 }
 
-GLenum texture_min_filter_to_gl_enum(Atlas::TextureFilter filter, bool mipmap) {
+uint32_t color_format_to_bytes(const Atlas::ColorFormat format) {
+	switch (format)
+	{
+	case Atlas::ColorFormat::R8G8B8A8:
+	case Atlas::ColorFormat::D32:
+	case Atlas::ColorFormat::D24S8: return 4;
+	case Atlas::ColorFormat::R8G8B8: return 3;
+	}
+
+	CORE_ASSERT(false, "color_format_to_gl_attachment: color format {} not defined", (uint32_t)format);
+	return 0;
+}
+
+GLenum texture_min_filter_to_gl_enum(const Atlas::TextureFilter filter, bool mipmap) {
 	switch (filter)
 	{
 	case Atlas::TextureFilter::LINEAR: return mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR;
@@ -63,7 +76,7 @@ GLenum texture_min_filter_to_gl_enum(Atlas::TextureFilter filter, bool mipmap) {
 	return 0;
 }
 
-GLenum texture_mag_filter_to_gl_enum(Atlas::TextureFilter filter, bool mipmap) {
+GLenum texture_mag_filter_to_gl_enum(const Atlas::TextureFilter filter, bool mipmap) {
 	switch (filter)
 	{
 	case Atlas::TextureFilter::LINEAR: return GL_LINEAR;
@@ -74,7 +87,7 @@ GLenum texture_mag_filter_to_gl_enum(Atlas::TextureFilter filter, bool mipmap) {
 	return 0;
 }
 
-GLenum buffer_usage_to_gl_enum(Atlas::BufferUsage usage) {
+GLenum buffer_usage_to_gl_enum(const Atlas::BufferUsage usage) {
 	switch (usage)
 	{
 	case Atlas::BufferUsage::STATIC: return GL_STATIC_DRAW;
@@ -85,7 +98,7 @@ GLenum buffer_usage_to_gl_enum(Atlas::BufferUsage usage) {
 	return 0;
 }
 
-GLenum shader_type_to_gl_enum(Atlas::ShaderType type) {
+GLenum shader_type_to_gl_enum(const Atlas::ShaderType type) {
 	switch (type)
 	{
 	case Atlas::ShaderType::VERTEX: return GL_VERTEX_SHADER;
@@ -97,7 +110,7 @@ GLenum shader_type_to_gl_enum(Atlas::ShaderType type) {
 	return 0;
 }
 
-std::pair<uint32_t, uint32_t> vertex_attrib_to_gl_enum(Atlas::VertexAttribute a)
+std::pair<uint32_t, uint32_t> vertex_attrib_to_gl_enum(const Atlas::VertexAttribute a)
 {
 	switch (a)
 	{

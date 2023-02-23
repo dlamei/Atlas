@@ -127,7 +127,7 @@ namespace Atlas {
 			s_GlobalRenderContext.clearDepthBuffer = b;
 		}
 
-		void clear_color(Color c)
+		void clear_color(RGBA c)
 		{
 			s_GlobalRenderContext.clearColor = c.normalized();
 		}

@@ -71,6 +71,7 @@ namespace Atlas {
 		static bool is_viewport_hovered();
 		static float get_time();
 		static Texture2D &get_viewport_color();
+		static void set_vsync(bool enable);
 		//static Texture2D &get_viewport_depth();
 
 		void push_layer(Ref<Layer> layer);

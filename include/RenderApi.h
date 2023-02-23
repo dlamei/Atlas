@@ -21,7 +21,7 @@ namespace Atlas {
 
 		void enable_clear_color(bool b);
 		void enable_clear_depth(bool b);
-		void clear_color(Atlas::Color c);
+		void clear_color(Atlas::RGBA c);
 
 		void begin(const Atlas::Texture2D &color);
 		void begin(const Atlas::Texture2D &color, const Texture2D &depth);
