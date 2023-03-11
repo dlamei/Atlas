@@ -240,8 +240,8 @@ namespace Atlas {
 			fill(data.data(), data.size() * sizeof(T));
 		}
 
-		inline uint32_t width() const;
-		inline uint32_t height() const;
+		uint32_t width() const;
+		uint32_t height() const;
 		bool has_mipmap() const;
 		inline ColorFormat format() const { return m_Format; }
 		inline bool is_init() const { return m_Texture != nullptr; }
@@ -557,12 +557,6 @@ namespace Atlas {
 
 		inline bool is_init() const { return m_Shader != nullptr; }
 
-		template <typename T>
-		void bind(const std::string &name, T value)
-		{
-			CORE_ASSERT(false, "Shader::bind not defined for type: {}", typeid(T).name());
-		}
-
 		void set(const std::string &name, int32_t value);
 		void set(const std::string &name, const glm::ivec2 &value);
 		void set(const std::string &name, const glm::ivec3 &value);
@@ -585,7 +579,7 @@ namespace Atlas {
 		void set(const std::string &name, const glm::mat4 &value);
 
 		void bind(const std::string &name, const Buffer &buffer);
-		void bind(const std::string &name, const Texture2D &texture, TextureUsageBits usages = TextureUsage::SAMPLER);
+		void bind(const std::string &name, const Texture2D &texture, TextureUsageBits usages);
 
 		Buffer &get_uniform_buffer(const char *name);
 		Buffer &get_storage_buffer(const char *name);

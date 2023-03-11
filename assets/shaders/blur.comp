@@ -1,0 +1,32 @@
+#version 450 core
+
+layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+layout(rgba8) uniform image2D img;
+
+void main() {
+	ivec2 texSize = imageSize(img);
+	ivec2 uv = ivec2(gl_GlobalInvocationID.xy);
+
+	vec3 sum = vec3(0, 0, 0);
+
+	for (int x = -1; x <= 1; x++) {
+		for (int y = -1; y <= 1; y++) {
+			ivec2 c = uv + ivec2(x, y);
+
+			if (c.x < texSize.x || c.y < texSize.y || c.x >= 0 || c.y >= 0) {
+				sum += imageLoad(img, c).xyz;
+			}
+		}
+	}
+
+	sum /= 9;
+
+	vec4 value = vec4(mix(imageLoad(img, uv).xyz, sum, 0.1), 1);
+	value = max(vec4(0, 0, 0, 0), value - 0.01);
+	
+	imageStore(img, uv, value);
+
+	
+
+}

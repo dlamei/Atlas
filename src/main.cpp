@@ -1,96 +1,88 @@
 #include <iostream>
-
 #include "application.h"
-#include "Render2D.h"
-#include "camera.h"
-#include "atl_types.h"
+
 #include "RenderApi.h"
+#include "Render2D.h"
 
-void fill_random(Atlas::Texture2D &tex) {
-	std::vector<Atlas::RGBA> arr(tex.width() * tex.height());
+using namespace Atlas;
 
-	for (uint32_t i = 0; i < arr.size(); i++) {
-		arr.at(i) = Atlas::RGBA(Atlas::Random::get<uint8_t>());
-	}
-
-	tex.fill(arr.data(), arr.size() * sizeof(Atlas::RGBA));
-}
+struct Agent {
+	glm::vec2 pos;
+	glm::vec2 vel;
+};
 
 class Sandbox : public Atlas::Layer {
 
-	Atlas::OrthographicCameraController controller;
-	Atlas::Shader computeShader;
-	Atlas::Texture2D compIn;
-	Atlas::Texture2D compOut;
+	Buffer agents;
+	Texture2D img;
+	Shader agentShader;
+	Shader blurShader;
 
-	int size = 1024;
+	OrthographicCameraController controller = OrthographicCameraController();
 
 	void on_attach() override {
-		using namespace Atlas;
+		controller.set_camera(0, 1, 0, 1);
 		Render2D::init();
 
-		controller.set_camera(0, 1, 0, 1);
+		img = Texture2D::rgba(128, 128, TextureFilter::NEAREST);
+		img.fill(RGBA(0, 0, 0, 255));
 
-		computeShader = Shader::load_comp("assets/shaders/game_of_life.comp");
+		const uint32_t agentCount = 128;
+		std::vector<Agent> agentsData(agentCount);
+		for (auto &agent : agentsData) {
+			//agent.pos = Random::get<glm::vec2>(-1, 1);
+			agent.pos = glm::vec2(0.5, 0.5);
+			agent.vel = glm::normalize(Random::get<glm::vec2>(-1, 1));
+		}
 
-		//compIn = Texture2D::rgba(size, size, TextureFilter::NEAREST);
-		//compIn.fill_random_greyscale();
-		//compIn = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
-		compIn = Texture2D::rgba(size, size, TextureFilter::NEAREST);
-		fill_random(compIn);
+		agents = Buffer::create(BufferType::STORAGE, agentsData.data(), agentsData.size() * sizeof(Agent));
+		agentShader = Shader::load_comp("assets/shaders/agents.comp");
+		blurShader = Shader::load_comp("assets/shaders/blur.comp");
 
-		size = compIn.width();
-		compOut = Texture2D::rgba(size, size, TextureFilter::NEAREST);
+		agentShader.bind("Agents", agents);
+		agentShader.bind("outImg", img, TextureUsage::WRITE);
+
+		blurShader.bind("img", img, TextureUsage::READ | TextureUsage::WRITE);
 	}
 
-	void on_detach() override {
-	}
+	void on_update(Timestep ts) override {
 
-	void on_update(Atlas::Timestep ts) override {
-		using namespace Atlas;
-		ATL_EVENT("layer update");
+
+		Shader::dispatch(blurShader, img.width() / 32, img.height() / 32, 1);
+		memory_barrier(Barrier::IMAGE_ACCESS);
+
+
+		//const int numWorkgroupsX = static_cast<int>(std::ceil(std::sqrt(agents.size()) / 32));
+		//const int numWorkgroupsY = static_cast<int>(std::ceil(std::sqrt(agents.size()) / 32));
+
+		Shader::dispatch(agentShader, 128, 1, 1);
+		memory_barrier(Barrier::ALL);
+
+		bool updated = true;
 
 		controller.on_update(ts);
 		Render2D::set_camera(controller.get_camera());
-
-		computeShader.bind("inputBoard", compIn, TextureUsage::READ);
-		computeShader.bind("outputBoard", compOut, TextureUsage::WRITE);
-		Shader::dispatch(computeShader, compIn.width() / 32, compIn.height() / 32, 1);
-
-		memory_barrier(Barrier::IMAGE_ACCESS);
-
 		Render::begin(Application::get_viewport_color());
-		Render2D::square({ 0, 0 }, 1, compOut);
+
+		Render2D::square({ 0, 0 }, 1, img);
 
 		Render2D::flush();
 		Render::end();
-
-		std::swap(compIn, compOut);
 	}
 
 	void on_imgui() override {
-		using namespace Atlas;
 
-		ImGui::Begin("Settings");
-
-		ImGui::InputInt("size", &size);
-
-		if (ImGui::Button("reload texture")) {
-			compIn = Texture2D::rgba(size, size, Atlas::TextureFilter::NEAREST);
-			fill_random(compIn);
-			//compIn = Texture2D::load("assets/images/uv_checker.png", TextureFilter::NEAREST).value();
-		}
-		ImGui::End();
 	}
 
-	void on_event(Atlas::Event &e) override {
+	void on_event(Event &e) override {
 		controller.on_event(e);
 	}
-
 };
 
 int main() {
 	Atlas::Application app = Atlas::Application::default();
+
 	app.push_layer(make_ref<Sandbox>());
 	app.run();
+
 }

@@ -314,13 +314,13 @@ namespace Atlas {
 	//	m_Texture->bind(indx);
 	//}
 
-	inline uint32_t Texture2D::width() const
+	uint32_t Texture2D::width() const
 	{
 		CORE_ASSERT(m_Texture, "Texture2D::width: texture was not initialized!");
 		return m_Texture->width();
 	}
 
-	inline uint32_t Texture2D::height() const
+	uint32_t Texture2D::height() const
 	{
 		CORE_ASSERT(m_Texture, "Texture2D::height: texture was not initialized!");
 		return m_Texture->height();

@@ -1,0 +1,53 @@
+#version 440 core
+
+layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+layout(rgba8) uniform image2D outImg;
+
+struct Agent {
+	vec2 pos;	
+	vec2 vel;
+};
+
+layout(std430) buffer Agents {
+	Agent agents[];
+};
+
+void main() {
+		ivec2 texSize = imageSize(outImg);
+		uvec2 id = gl_GlobalInvocationID.xy;
+		uint indx = id.x;
+		//uint indx = id.x + id.y * 32;
+
+		//update
+		agents[indx].pos += agents[indx].vel / 200;
+
+		if (agents[indx].pos.x > 1) {
+			agents[indx].vel.x *= -1;
+			agents[indx].pos.x = 1;
+		}
+
+		if (agents[indx].pos.y > 1) {
+			agents[indx].vel.y *= -1;
+			agents[indx].pos.y = 1;
+		}
+
+		if (agents[indx].pos.x < 0) {
+			agents[indx].vel.x *= -1;
+			agents[indx].pos.x = 0;
+		}
+
+		if (agents[indx].pos.y < 0) {
+			agents[indx].vel.y *= -1;
+			agents[indx].pos.y = 0;
+		}
+
+
+		Agent a = agents[indx];
+		ivec2 img_pos = ivec2(a.pos.x * texSize.x, a.pos.y * texSize.y);
+
+
+
+		imageStore(outImg, img_pos, vec4(1, 1, 1, 1));
+		
+}

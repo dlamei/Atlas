@@ -164,15 +164,21 @@ namespace gl_utils {
 				GLenum type;
 				int nameLen, size, location;
 				glGetActiveUniform(program, (uint32_t)i, (int)buffer.size(), &nameLen, &size, &type, buffer.data());
-				if (type == GL_UNIFORM_BLOCK) continue;
+
 				std::string name(buffer.data(), nameLen);
 				location = glGetUniformLocation(program, name.c_str());
+
+				if (type == GL_UNIFORM_BLOCK) continue;
+
 				if (location == -1) continue;
+
+				int index = glGetProgramResourceLocation(program, GL_UNIFORM, name.c_str());
 
 				GLUniformInfo info{};
 				info.location = location;
 				info.type = type;
 				info.size;
+				info.index = index;
 
 				data->uniforms.insert({ name, info });
 			}
@@ -394,6 +400,12 @@ namespace gl_utils {
 		for (auto &block : m_ReflectionData.storageBlocks) {
 			if (block.second.binding == 0) block.second.binding = block.second.index;
 			glShaderStorageBlockBinding(m_ID, block.second.index, block.second.binding);
+		}
+
+		for (auto &uniform : m_ReflectionData.uniforms) {
+			//if (uniform.second.type == GL_IMAGE_2D || uniform.second.type == GL_SAMPLER_2D) {
+			set_int(uniform.first.c_str(), uniform.second.index);
+			//}
 		}
 	}
 
@@ -653,10 +665,16 @@ namespace gl_utils {
 		glCreateVertexArrays(1, &s_GlobalVAO);
 		glBindVertexArray(s_GlobalVAO);
 
+		GLint workGroupSize[3]{};
+		glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &workGroupSize[0]);
+		glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &workGroupSize[1]);
+		glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &workGroupSize[2]);
+
 		CORE_TRACE("OpenGL Info:");
 		CORE_TRACE(" vendor:	{}", (const char *)glGetString(GL_VENDOR));
 		CORE_TRACE(" renderer:	{}", (const char *)glGetString(GL_RENDERER));
 		CORE_TRACE(" version:	{}", (const char *)glGetString(GL_VERSION));
-		CORE_TRACE(" compute support:	{}\n", supported);
+		CORE_TRACE(" compute support:	{}", supported);
+		if (supported) CORE_TRACE(" work groups:	({}, {}, {})\n", workGroupSize[0], workGroupSize[1], workGroupSize[2]);
 	}
 }
