@@ -698,45 +698,90 @@ namespace Atlas {
 		return Shader(info);
 	}
 
-#define IMPL_SHADER_FUNC(TYPE, FUNC_NAME) \
-	void Shader::set(const std::string &name, TYPE value) \
-	{ \
-		CORE_ASSERT(m_Shader, "Shader::set_int: Shader was not initialized!"); \
-		m_Shader->FUNC_NAME(name.c_str(), value); \
+	void Shader::set_int(const std::string &name, int32_t value)
+	{
+		m_Shader->set_int(name.c_str(), value);
 	}
 
-	IMPL_SHADER_FUNC(int32_t, set_int);
-	IMPL_SHADER_FUNC(const glm::ivec2 &, set_int2);
-	IMPL_SHADER_FUNC(const glm::ivec3 &, set_int3);
-	IMPL_SHADER_FUNC(const glm::ivec4 &, set_int4);
+	void Shader::set_int2(const std::string &name, const glm::ivec2 &value)
+	{
+		m_Shader->set_int2(name.c_str(), value);
+	}
 
-	void Shader::set(const std::string &name, int32_t *value, size_t count)
+	void Shader::set_int3(const std::string &name, const glm::ivec3 &value)
+	{
+		m_Shader->set_int3(name.c_str(), value);
+	}
+
+	void Shader::set_int4(const std::string &name, const glm::ivec4 &value)
+	{
+		m_Shader->set_int4(name.c_str(), value);
+	}
+
+	void Shader::set_int_arr(const std::string &name, int32_t *value, size_t count)
 	{
 		m_Shader->set_int_vec(name.c_str(), value, count);
 	}
 
-	IMPL_SHADER_FUNC(uint32_t, set_int);
-	IMPL_SHADER_FUNC(const glm::uvec2 &, set_uint2);
-	IMPL_SHADER_FUNC(const glm::uvec3 &, set_uint3);
-	IMPL_SHADER_FUNC(const glm::uvec4 &, set_uint4);
+	void Shader::set_uint(const std::string &name, uint32_t value)
+	{
+		m_Shader->set_uint(name.c_str(), value);
+	}
 
-	void Shader::set(const std::string &name, uint32_t *value, size_t count)
+	void Shader::set_uint2(const std::string &name, const glm::uvec2 &value)
+	{
+		m_Shader->set_uint2(name.c_str(), value);
+	}
+
+	void Shader::set_uint3(const std::string &name, const glm::uvec3 &value)
+	{
+		m_Shader->set_uint3(name.c_str(), value);
+	}
+
+	void Shader::set_uint4(const std::string &name, const glm::uvec4 &value)
+	{
+		m_Shader->set_uint4(name.c_str(), value);
+	}
+
+	void Shader::set_uint_arr(const std::string &name, uint32_t *value, size_t count)
 	{
 		m_Shader->set_uint_vec(name.c_str(), value, count);
 	}
 
-	IMPL_SHADER_FUNC(float, set_float);
-	IMPL_SHADER_FUNC(const glm::vec2 &, set_float2);
-	IMPL_SHADER_FUNC(const glm::vec3 &, set_float3);
-	IMPL_SHADER_FUNC(const glm::vec4 &, set_float4);
+	void Shader::set_float(const std::string &name, float value)
+	{
+		m_Shader->set_float(name.c_str(), value);
+	}
 
-	void Shader::set(const std::string &name, float *value, size_t count)
+	void Shader::set_float2(const std::string &name, const glm::vec2 &value)
+	{
+		m_Shader->set_float2(name.c_str(), value);
+	}
+
+	void Shader::set_float3(const std::string &name, const glm::vec3 &value)
+	{
+		m_Shader->set_float3(name.c_str(), value);
+	}
+
+	void Shader::set_float4(const std::string &name, const glm::vec4 &value)
+	{
+		m_Shader->set_float4(name.c_str(), value);
+	}
+
+	void Shader::set_float_arr(const std::string &name, float *value, size_t count)
 	{
 		m_Shader->set_float_vec(name.c_str(), value, count);
 	}
 
-	IMPL_SHADER_FUNC(const glm::mat3 &, set_mat3);
-	IMPL_SHADER_FUNC(const glm::mat4 &, set_mat4);
+	void Shader::set_mat3(const std::string &name, const glm::mat3 &value)
+	{
+		m_Shader->set_mat3(name.c_str(), value);
+	}
+
+	void Shader::set_mat4(const std::string &name, const glm::mat4 &value)
+	{
+		m_Shader->set_mat4(name.c_str(), value);
+	}
 
 	void Shader::bind(const std::string &name, const Buffer &buffer)
 	{

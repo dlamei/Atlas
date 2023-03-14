@@ -74,7 +74,7 @@ namespace Atlas::Render2D {
 
 		int textureSlots[RenderData::MAX_TEXTURE_SLOTS];
 		for (int i = 0; i < RenderData::MAX_TEXTURE_SLOTS; i++) textureSlots[i] = i;
-		s_RenderData.shader.set("uTextureSlots[0]", textureSlots, RenderData::MAX_TEXTURE_SLOTS);
+		s_RenderData.shader.set_int_arr("uTextureSlots[0]", textureSlots, RenderData::MAX_TEXTURE_SLOTS);
 	}
 
 	int push_texture(const Texture2D &texture) {

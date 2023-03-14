@@ -557,26 +557,26 @@ namespace Atlas {
 
 		inline bool is_init() const { return m_Shader != nullptr; }
 
-		void set(const std::string &name, int32_t value);
-		void set(const std::string &name, const glm::ivec2 &value);
-		void set(const std::string &name, const glm::ivec3 &value);
-		void set(const std::string &name, const glm::ivec4 &value);
-		void set(const std::string &name, int32_t *value, size_t count);
+		void set_int(const std::string &name, int32_t value);
+		void set_int2(const std::string &name, const glm::ivec2 &value);
+		void set_int3(const std::string &name, const glm::ivec3 &value);
+		void set_int4(const std::string &name, const glm::ivec4 &value);
+		void set_int_arr(const std::string &name, int32_t *value, size_t count);
 
-		void set(const std::string &name, uint32_t value);
-		void set(const std::string &name, const glm::uvec2 &value);
-		void set(const std::string &name, const glm::uvec3 &value);
-		void set(const std::string &name, const glm::uvec4 &value);
-		void set(const std::string &name, uint32_t *value, size_t count);
+		void set_uint(const std::string &name, uint32_t value);
+		void set_uint2(const std::string &name, const glm::uvec2 &value);
+		void set_uint3(const std::string &name, const glm::uvec3 &value);
+		void set_uint4(const std::string &name, const glm::uvec4 &value);
+		void set_uint_arr(const std::string &name, uint32_t *value, size_t count);
 
-		void set(const std::string &name, float value);
-		void set(const std::string &name, const glm::vec2 &value);
-		void set(const std::string &name, const glm::vec3 &value);
-		void set(const std::string &name, const glm::vec4 &value);
-		void set(const std::string &name, float *value, size_t count);
+		void set_float(const std::string &name, float value);
+		void set_float2(const std::string &name, const glm::vec2 &value);
+		void set_float3(const std::string &name, const glm::vec3 &value);
+		void set_float4(const std::string &name, const glm::vec4 &value);
+		void set_float_arr(const std::string &name, float *value, size_t count);
 
-		void set(const std::string &name, const glm::mat3 &value);
-		void set(const std::string &name, const glm::mat4 &value);
+		void set_mat3(const std::string &name, const glm::mat3 &value);
+		void set_mat4(const std::string &name, const glm::mat4 &value);
 
 		void bind(const std::string &name, const Buffer &buffer);
 		void bind(const std::string &name, const Texture2D &texture, TextureUsageBits usages);

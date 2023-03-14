@@ -403,9 +403,9 @@ namespace gl_utils {
 		}
 
 		for (auto &uniform : m_ReflectionData.uniforms) {
-			//if (uniform.second.type == GL_IMAGE_2D || uniform.second.type == GL_SAMPLER_2D) {
-			set_int(uniform.first.c_str(), uniform.second.index);
-			//}
+			if (uniform.second.type == GL_IMAGE_2D || uniform.second.type == GL_SAMPLER_2D) {
+				set_int(uniform.first.c_str(), uniform.second.index);
+			}
 		}
 	}
 
