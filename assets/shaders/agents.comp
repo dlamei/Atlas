@@ -16,7 +16,7 @@ struct settingsStruct {
 };
 
 struct Agent {
-	ivec2 speciesMask;
+	ivec4 speciesMask;
 	vec2 pos;	
 	float angle;
 	float pad0;
@@ -59,7 +59,9 @@ float senseTrail(Agent agent, float sensorAngleOffset, float sensorDistance)
 
 	int sensorSize = int(settings.sensorSize / 2);
 
-	ivec4 senseWeight = ivec4(agent.speciesMask, 0, 0) * 2 - 1;
+	//ivec4 senseWeight = ivec4(agent.speciesMask, 0, 0) * 2 - 1;
+	agent.speciesMask.a = 0;
+	ivec4 senseWeight = agent.speciesMask * 2 - 1;
 
 	float senseSum=0;
 	for (int offsetX = -sensorSize; offsetX <= sensorSize; offsetX++)
@@ -149,7 +151,8 @@ void main()
 	agents[id.x] = cAgent;
 
 
-	ivec4 speciesColor = ivec4(cAgent.speciesMask, 0, 1);
-	imageStore(outImg, ivec2(cAgent.pos.x, cAgent.pos.y), speciesColor);
+	//ivec4 speciesColor = ivec4(cAgent.speciesMask, 0, 1);
+	cAgent.speciesMask.a = 1;
+	imageStore(outImg, ivec2(cAgent.pos.x, cAgent.pos.y), cAgent.speciesMask);
 }
 

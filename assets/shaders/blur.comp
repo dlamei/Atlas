@@ -34,6 +34,7 @@ void main() {
 
 	vec4 value = vec4(mix(imageLoad(img, uv).xyz, sum, settings.difuseSpeed), 1);
 	value = max(vec4(0, 0, 0, 0), value - settings.evaporationSpeed);
+	value.a = 1;
 	
 	imageStore(img, uv, value);
 
